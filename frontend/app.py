@@ -18,7 +18,70 @@ GREEN, SAFFRON = '#0F5C50', '#F2B84B'
 
 st.set_page_config(page_title='Perch | house prices in Sri Lanka', layout='wide')
 
+# ---------- styling ----------
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&family=Sora:wght@600;700&display=swap');
 
+html, body, [class*="st-"] { font-family: 'Manrope', sans-serif; }
+.stApp { background: #F3F6F5; }
+#MainMenu, footer, header[data-testid="stHeader"] { display: none; }
+.block-container { padding: 0 0 3rem 0; max-width: 100%; }
+
+.hero { background: #0F3D36; padding: 2.6rem 8vw 6.5rem 8vw; color: #fff; }
+.hero .brand { display: flex; align-items: center; gap: .7rem; }
+.hero .logo { width: 38px; height: 38px; border-radius: 10px; background: #F2B84B; color: #0F3D36;
+              display: grid; place-items: center; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 1.3rem; }
+.hero .name { font-family: 'Sora', sans-serif; font-size: 1.5rem; font-weight: 700; letter-spacing: .5px; }
+.hero h1 { font-family: 'Sora', sans-serif; font-size: 2.5rem; line-height: 1.15; margin: 1.6rem 0 .7rem 0; max-width: 40rem; color: #fff; }
+.hero p { color: #BFD6D0; font-size: 1.05rem; max-width: 38rem; line-height: 1.55; margin: 0; }
+
+.body { margin: -4rem auto 0 auto; padding: 0 8vw; }
+[data-testid="stTabs"] { padding: 0 8vw; }
+[class*="st-key-card"], .card {
+    background: #fff; border-radius: 16px; padding: 1.5rem;
+    box-shadow: 0 8px 30px rgba(16, 35, 31, .10);
+}
+.card h3, [class*="st-key-card"] h3 { font-family: 'Sora', sans-serif; font-size: 1.1rem; margin: 0 0 .4rem 0; }
+
+.est { border-top: 5px solid #F2B84B; }
+.label { font-size: .75rem; font-weight: 700; color: #4C625D; text-transform: uppercase; letter-spacing: 1.5px; }
+.big { font-family: 'Sora', sans-serif; font-size: 2.6rem; font-weight: 700; color: #10231F; margin: .3rem 0 0 0; }
+.sub { color: #4C625D; font-size: .95rem; }
+.range { margin-top: .8rem; padding: .7rem .9rem; background: #EAF3F0; border-radius: 10px; font-size: .9rem; }
+
+.bar { position: relative; height: 12px; border-radius: 6px; margin: 1rem 0 .5rem 0;
+       background: linear-gradient(90deg, #CFE5DF, #0F5C50); }
+.bar .pin { position: absolute; top: -5px; width: 4px; height: 22px; background: #F2B84B; border-radius: 2px; }
+.bar-labels { display: flex; justify-content: space-between; font-size: .75rem; color: #4C625D; }
+
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+.tile { background: #fff; border-radius: 14px; padding: 1rem; box-shadow: 0 4px 16px rgba(16, 35, 31, .08); }
+.tile .v { font-family: 'Sora', sans-serif; font-size: 1.25rem; font-weight: 700; }
+.note { font-size: .8rem; color: #4C625D; line-height: 1.5; }
+.check { margin-top: .8rem; padding: .7rem .9rem; border-radius: 10px; background: #FFF6E0; font-size: .9rem; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8rem; margin-bottom: 1rem; }
+.kpi { background: #fff; border-radius: 14px; padding: 1rem 1.1rem; box-shadow: 0 4px 16px rgba(16, 35, 31, .08); }
+.kpi .v { font-family: 'Sora', sans-serif; font-size: 1.3rem; font-weight: 700; }
+.kpi .s { font-size: .8rem; color: #4C625D; }
+
+button[data-baseweb="tab"] { font-weight: 700; font-size: 1rem; }
+div[data-testid="stButton"] button { border-radius: 12px; height: 2.8rem; font-weight: 700; border: 1px solid #C9D6D2; }
+div[data-testid="stButton"] button:hover { border-color: #0F5C50; color: #0F5C50; }
+
+@media (max-width: 800px) {
+    .hero { padding: 1.6rem 1.2rem 5.5rem 1.2rem; }
+    .hero h1 { font-size: 1.8rem; }
+    .body, [data-testid="stTabs"] { padding: 0 1rem; }
+    .big { font-size: 2rem; }
+    .kpis { grid-template-columns: 1fr 1fr; }
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+# ---------- loading ----------
 @st.cache_resource
 def load_model():
     with open(ROOT / 'model' / 'house_price_model.pkl', 'rb') as f:
@@ -117,64 +180,76 @@ def map_clicked():
 
 
 # ---------- header ----------
-st.title('Perch')
-st.write('Describe a house and get a price estimate.')
+st.markdown("""
+<div class="hero">
+  <div class="brand"><div class="logo">P</div><div class="name">Perch</div></div>
+  <h1>What is a house worth, anywhere in Sri Lanka?</h1>
+  <p>Pick a spot on the map, describe the house and get a price estimate. Or explore how asking prices
+  differ from town to town and how they moved over the months. Built from thousands of ikman.lk house ads.</p>
+</div>
+""", unsafe_allow_html=True)
 
-tab_est, tab_map = st.tabs(['Estimate a price', 'Price map'])
+st.markdown('<div class="body">', unsafe_allow_html=True)
+tab_est, tab_map, tab_about = st.tabs(['Estimate a price', 'Price map', 'About the model'])
 
+# =====================================================================
+# tab 1: estimate
+# =====================================================================
 with tab_est:
-    known = set((d, l) for d in meta['locations'] for l in meta['locations'][d])
     left, right = st.columns([3, 2], gap='large')
 
     with left:
-        st.subheader('Choose the location')
-        st.caption('Click a dot to pick the area. Bigger dots have more ads.')
+        with st.container(key='card_map'):
+            st.markdown('### 1. Choose the location')
+            st.caption('Click a dot to pick the area. Bigger dots have more ads.')
 
-        places = area_stats(houses)
-        places = places[[(d, l) in known for d, l in zip(places['district'], places['location'])]].copy()
-        places['radius'] = 900 + np.sqrt(places['ads']) * 160
-        places['colour'] = colour_scale(places['median_price'].values)
+            known = set((d, l) for d in meta['locations'] for l in meta['locations'][d])
+            places = area_stats(houses)
+            places = places[[(d, l) in known for d, l in zip(places['district'], places['location'])]].copy()
+            places['radius'] = 900 + np.sqrt(places['ads']) * 160
+            places['colour'] = colour_scale(places['median_price'].values)
 
-        current = places[places['location'] == st.session_state['location']]
-        layers = [pdk.Layer('ScatterplotLayer', data=places, id='places', pickable=True,
-                            get_position='[longitude, latitude]', get_radius='radius', radius_min_pixels=5,
-                            radius_max_pixels=28, get_fill_color='colour', stroked=True,
-                            get_line_color=[255, 255, 255], line_width_min_pixels=1)]
-        if len(current):
-            layers.append(pdk.Layer('ScatterplotLayer', data=current, get_position='[longitude, latitude]',
-                                    get_radius='radius', radius_min_pixels=9, radius_max_pixels=34,
-                                    get_fill_color=[242, 184, 75, 230], stroked=True,
-                                    get_line_color=[16, 35, 31], line_width_min_pixels=2))
-            view = pdk.ViewState(latitude=float(current['latitude'].iloc[0]),
-                                 longitude=float(current['longitude'].iloc[0]), zoom=9.5)
-        else:
-            view = pdk.ViewState(latitude=7.6, longitude=80.7, zoom=6.6)
+            current = places[places['location'] == st.session_state['location']]
+            layers = [pdk.Layer('ScatterplotLayer', data=places, id='places', pickable=True,
+                                get_position='[longitude, latitude]', get_radius='radius', radius_min_pixels=5,
+                                radius_max_pixels=28, get_fill_color='colour', stroked=True,
+                                get_line_color=[255, 255, 255], line_width_min_pixels=1)]
+            if len(current):
+                layers.append(pdk.Layer('ScatterplotLayer', data=current, get_position='[longitude, latitude]',
+                                        get_radius='radius', radius_min_pixels=9, radius_max_pixels=34,
+                                        get_fill_color=[242, 184, 75, 230], stroked=True,
+                                        get_line_color=[16, 35, 31], line_width_min_pixels=2))
+                view = pdk.ViewState(latitude=float(current['latitude'].iloc[0]),
+                                     longitude=float(current['longitude'].iloc[0]), zoom=9.5)
+            else:
+                view = pdk.ViewState(latitude=7.6, longitude=80.7, zoom=6.6)
 
-        st.pydeck_chart(pdk.Deck(layers=layers, initial_view_state=view, map_style='light', tooltip=TOOLTIP),
-                        on_select=map_clicked, selection_mode='single-object', key='estimate_map', height=380)
+            st.pydeck_chart(pdk.Deck(layers=layers, initial_view_state=view, map_style='light', tooltip=TOOLTIP),
+                            on_select=map_clicked, selection_mode='single-object', key='estimate_map', height=380)
 
-        st.subheader('Describe the house')
-        c1, c2 = st.columns(2)
-        district = c1.selectbox('District', districts, key='district', on_change=district_changed)
-        location = c2.selectbox('Location', meta['locations'][district], key='location', on_change=reset_flag)
+        st.write('')
+        with st.container(key='card_form'):
+            st.markdown('### 2. Describe the house')
+            c1, c2 = st.columns(2)
+            district = c1.selectbox('District', districts, key='district', on_change=district_changed)
+            location = c2.selectbox('Location', meta['locations'][district], key='location', on_change=reset_flag)
 
-        c3, c4 = st.columns(2)
-        bedrooms = c3.number_input('Bedrooms', 1, 10, key='bedrooms', on_change=reset_flag)
-        bathrooms = c4.number_input('Bathrooms', 1, 10, key='bathrooms', on_change=reset_flag)
+            c3, c4 = st.columns(2)
+            bedrooms = c3.number_input('Bedrooms', 1, 10, key='bedrooms', on_change=reset_flag)
+            bathrooms = c4.number_input('Bathrooms', 1, 10, key='bathrooms', on_change=reset_flag)
 
-        c5, c6 = st.columns(2)
-        house_size = c5.number_input('House size (sqft)', 200, 20000, step=50, key='house_size_sqft', on_change=reset_flag)
-        land_size = c6.number_input('Land size (perches)', 1.0, 500.0, step=0.5, key='land_size_perches', on_change=reset_flag)
+            c5, c6 = st.columns(2)
+            house_size = c5.number_input('House size (sqft)', 200, 20000, step=50, key='house_size_sqft', on_change=reset_flag)
+            land_size = c6.number_input('Land size (perches)', 1.0, 500.0, step=0.5, key='land_size_perches', on_change=reset_flag)
 
-        with st.expander('Seller details'):
-            c7, c8, c9, c10 = st.columns(4)
-            membership = c7.selectbox('Membership', meta['membership_levels'], key='membership_level', on_change=reset_flag)
-            is_member = c8.selectbox('Member', ['No', 'Yes'], key='is_member', on_change=reset_flag)
-            is_verified = c9.selectbox('Verified', ['No', 'Yes'], key='is_verified', on_change=reset_flag)
-            month = c10.selectbox('Posted in', MONTHS, key='month', on_change=reset_flag)
+            with st.expander('Seller details'):
+                c7, c8, c9, c10 = st.columns(4)
+                membership = c7.selectbox('Membership', meta['membership_levels'], key='membership_level', on_change=reset_flag)
+                is_member = c8.selectbox('Member', ['No', 'Yes'], key='is_member', on_change=reset_flag)
+                is_verified = c9.selectbox('Verified', ['No', 'Yes'], key='is_verified', on_change=reset_flag)
+                month = c10.selectbox('Posted in', MONTHS, key='month', on_change=reset_flag)
 
-        st.button('Try the held out sample listing', on_click=load_sample)
-
+            st.button('Try the held out sample listing', on_click=load_sample)
 
     def make_row(**changes):
         row = {
@@ -188,7 +263,6 @@ with tab_est:
         row.update(changes)
         return row
 
-
     price = float(model.predict(pd.DataFrame([make_row()]))[0])
 
     # about 68% of listings fall inside +/- one test rmsle on the log scale
@@ -196,23 +270,42 @@ with tab_est:
     low, high = price / spread, price * spread
 
     with right:
-        st.metric('Estimated asking price', short(price))
-        st.caption(f'Rs {price:,.0f}')
-        st.write(f'Likely range: {short(low)} to {short(high)}')
+        st.markdown(f"""
+        <div class="card est">
+          <div class="label">Estimated asking price</div>
+          <div class="big">{short(price)}</div>
+          <div class="sub">Rs {price:,.0f}</div>
+          <div class="range">Likely range: {short(low)} to {short(high)}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
         quantiles = meta['price_quantiles'].get(district)
         if quantiles:
             pct = float(np.interp(price, quantiles, np.arange(101)))
-            st.write(f'Priced above about {pct:.0f}% of house ads in {district}.')
+            pos = min(max(pct, 2), 98)
+            st.markdown(f"""
+            <div class="card" style="margin-top: 1rem">
+              <div class="label">Against {district} listings</div>
+              <div class="bar"><div class="pin" style="left: {pos}%"></div></div>
+              <div class="bar-labels"><span>{short(quantiles[2])}</span><span>median {short(quantiles[50])}</span><span>{short(quantiles[98])}</span></div>
+              <div class="sub" style="margin-top: .6rem">Priced above about {pct:.0f}% of house ads in {district}.</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-        t1, t2 = st.columns(2)
-        t1.metric('Per sqft', f'Rs {price / house_size:,.0f}')
-        t2.metric('Per perch of land', short(price / land_size))
+        st.markdown(f"""
+        <div class="tiles" style="margin-top: 1rem">
+          <div class="tile"><div class="label">Per sqft</div><div class="v">Rs {price / house_size:,.0f}</div></div>
+          <div class="tile"><div class="label">Per perch of land</div><div class="v">{short(price / land_size)}</div></div>
+        </div>
+        """, unsafe_allow_html=True)
 
         if st.session_state.get('sample_loaded'):
             actual = sample['actual_price']
             err = abs(price - actual) / actual * 100
-            st.info(f'Held out listing. It was never used for training. The real asking price was {short(actual)}, so the estimate is off by {err:.1f}%.')
+            st.markdown(f"""
+            <div class="check"><b>Held out listing.</b> It was never used for training.
+            The real asking price was {short(actual)}, so the estimate is off by {err:.1f}%.</div>
+            """, unsafe_allow_html=True)
 
         # the same house in other busy areas
         busy = (houses.groupby(['location', 'district']).size().rename('ads').reset_index()
@@ -230,11 +323,16 @@ with tab_est:
         st.subheader('Price as the house gets bigger')
         st.line_chart(pd.Series(model.predict(curve) / 1e6, index=sizes, name='Rs million'), color=SAFFRON, height=240)
 
-        st.caption(f'Estimates are based on asking prices from ads, not final sale prices. Model: {meta["model"]}.')
+        st.markdown(
+            f'<p class="note" style="margin-top: 1rem">Estimates are based on asking prices from ads, not final sale prices. '
+            f'Model: {meta["model"]}.</p>', unsafe_allow_html=True)
 
+# =====================================================================
+# tab 2: price map with timeline
+# =====================================================================
 with tab_map:
-    with st.container():
-        st.subheader('Explore prices across the island')
+    with st.container(key='card_controls'):
+        st.markdown('### Explore prices across the island')
         a, b, c = st.columns([2, 2, 2])
         metric = a.selectbox('Show', ['Median price', 'Price per sqft', 'Number of ads'], key='metric')
         style = b.selectbox('Map style', ['3D columns', 'Heatmap', 'Bubbles'], key='style')
@@ -296,11 +394,14 @@ with tab_map:
         solid = shown[shown['ads'] >= 15]
         top = solid.sort_values('median_price', ascending=False).iloc[0] if len(solid) else None
         low_row = solid.sort_values('median_price').iloc[0] if len(solid) else None
-        k1, k2, k3, k4 = st.columns(4)
-        k1.metric('Areas shown', len(shown), f"{int(shown['ads'].sum()):,} ads", delta_color='off')
-        k2.metric('Median price', short(float(np.average(shown['median_price'], weights=shown['ads']))), 'weighted by ads', delta_color='off')
-        k3.metric('Priciest area', top['location'] if top is not None else '-', short(top['median_price']) if top is not None else '', delta_color='off')
-        k4.metric('Cheapest area', low_row['location'] if low_row is not None else '-', short(low_row['median_price']) if low_row is not None else '', delta_color='off')
+        st.markdown(f"""
+        <div class="kpis" style="margin-top: 1rem">
+          <div class="kpi"><div class="label">Areas shown</div><div class="v">{len(shown)}</div><div class="s">{int(shown['ads'].sum()):,} ads</div></div>
+          <div class="kpi"><div class="label">Median price</div><div class="v">{short(float(np.average(shown['median_price'], weights=shown['ads'])))}</div><div class="s">weighted by ads</div></div>
+          <div class="kpi"><div class="label">Priciest area</div><div class="v">{top['location'] if top is not None else '-'}</div><div class="s">{short(top['median_price']) if top is not None else ''}</div></div>
+          <div class="kpi"><div class="label">Cheapest area</div><div class="v">{low_row['location'] if low_row is not None else '-'}</div><div class="s">{short(low_row['median_price']) if low_row is not None else ''}</div></div>
+        </div>
+        """, unsafe_allow_html=True)
 
     c1, c2 = st.columns(2, gap='large')
     with c1:
@@ -323,3 +424,32 @@ with tab_map:
         st.dataframe(table.head(8), hide_index=True, width='stretch')
         st.write('Bottom 8')
         st.dataframe(table.tail(8), hide_index=True, width='stretch')
+
+# =====================================================================
+# tab 3: about
+# =====================================================================
+with tab_about:
+    st.subheader('How the estimate is made')
+    st.markdown(f"""
+    The price comes from a pickled scikit-learn pipeline: preprocessing (imputing, scaling, one hot encoding of
+    locations) followed by **{meta['model']}**, trained on house ads from ikman.lk. The model predicts the log of the
+    price, and the range shown is one test error either side (about 68% of ads fall inside it).
+
+    - Reposted ads were removed before training so the test score is not flattering.
+    - Prices are asking prices, not what the house finally sold for.
+    - Ads cover Sep 2022 to Apr 2023 only, so the timeline is short and says nothing about longer trends.
+    """)
+
+    results = pd.DataFrame(meta['results']).set_index('model')
+    c1, c2 = st.columns(2, gap='large')
+    with c1:
+        st.subheader('Model comparison')
+        st.dataframe(results.round(3), width='stretch')
+        st.caption('rmsle and r2 are on the log price, lower rmsle is better. Scored on 20% of the data kept aside.')
+    with c2:
+        st.subheader('What drives the price')
+        importance = pd.DataFrame(meta['importance']).sort_values('xgboost (tuned)')
+        st.bar_chart(importance, horizontal=True, color=[GREEN, SAFFRON], height=330)
+        st.caption('How much the error grows when a feature is shuffled, so longer means more important.')
+
+st.markdown('</div>', unsafe_allow_html=True)
