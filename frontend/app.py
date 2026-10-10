@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pydeck as pdk
 import streamlit as st
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -28,7 +29,11 @@ def load_json(name):
 
 @st.cache_data
 def load_houses():
-    return pd.read_csv(ROOT / 'data' / 'processed' / 'houses_clean.csv')
+    houses = pd.read_csv(ROOT / 'data' / 'processed' / 'houses_clean.csv')
+    coords = pd.read_csv(ROOT / 'data' / 'processed' / 'location_coords.csv')
+    houses = houses.merge(coords[['location', 'latitude', 'longitude']], on='location', how='left')
+    houses['price_per_sqft'] = houses['price'] / houses['house_size_sqft']
+    return houses
 
 
 model = load_model()
@@ -40,6 +45,28 @@ houses = load_houses()
 def short(price):
     return f'Rs {price / 1e6:,.1f} M'
 
+
+def area_stats(data):
+    # one row per location with the numbers shown on the maps
+    g = data.groupby(['location', 'district', 'latitude', 'longitude']).agg(
+        ads=('price', 'size'), median_price=('price', 'median'), per_sqft=('price_per_sqft', 'median')).reset_index()
+    g['median_m'] = (g['median_price'] / 1e6).round(1)
+    g['per_sqft'] = g['per_sqft'].round(0)
+    return g
+
+
+def colour_scale(values):
+    # light green to deep green, scaled between the 5th and 95th percentile
+    lo, hi = np.percentile(values, [5, 95])
+    t = np.clip((values - lo) / (hi - lo + 1e-9), 0, 1)
+    light, dark = np.array([207, 229, 223]), np.array([15, 92, 80])
+    return [[int(c) for c in light + (dark - light) * x] + [210] for x in t]
+
+
+TOOLTIP = {
+    'html': '<b>{location}</b>, {district}<br/>Median Rs {median_m} M<br/>Rs {per_sqft} per sqft<br/>{ads} ads',
+    'style': {'backgroundColor': '#0F3D36', 'color': 'white', 'fontFamily': 'Manrope', 'fontSize': '13px'},
+}
 
 # ---------- state ----------
 districts = sorted(meta['locations'])
@@ -76,6 +103,15 @@ def district_changed():
     reset_flag()
 
 
+def map_clicked():
+    # runs before the rerun, so it is allowed to change the widget values
+    picked = st.session_state['estimate_map'].selection.objects.get('places', [])
+    if picked:
+        st.session_state['district'] = picked[0]['district']
+        st.session_state['location'] = picked[0]['location']
+        reset_flag()
+
+
 # ---------- header ----------
 st.title('Perch')
 st.write('Describe a house and get a price estimate.')
@@ -84,6 +120,32 @@ known = set((d, l) for d in meta['locations'] for l in meta['locations'][d])
 left, right = st.columns([3, 2], gap='large')
 
 with left:
+    st.subheader('Choose the location')
+    st.caption('Click a dot to pick the area. Bigger dots have more ads.')
+
+    places = area_stats(houses)
+    places = places[[(d, l) in known for d, l in zip(places['district'], places['location'])]].copy()
+    places['radius'] = 900 + np.sqrt(places['ads']) * 160
+    places['colour'] = colour_scale(places['median_price'].values)
+
+    current = places[places['location'] == st.session_state['location']]
+    layers = [pdk.Layer('ScatterplotLayer', data=places, id='places', pickable=True,
+                        get_position='[longitude, latitude]', get_radius='radius', radius_min_pixels=5,
+                        radius_max_pixels=28, get_fill_color='colour', stroked=True,
+                        get_line_color=[255, 255, 255], line_width_min_pixels=1)]
+    if len(current):
+        layers.append(pdk.Layer('ScatterplotLayer', data=current, get_position='[longitude, latitude]',
+                                get_radius='radius', radius_min_pixels=9, radius_max_pixels=34,
+                                get_fill_color=[242, 184, 75, 230], stroked=True,
+                                get_line_color=[16, 35, 31], line_width_min_pixels=2))
+        view = pdk.ViewState(latitude=float(current['latitude'].iloc[0]),
+                             longitude=float(current['longitude'].iloc[0]), zoom=9.5)
+    else:
+        view = pdk.ViewState(latitude=7.6, longitude=80.7, zoom=6.6)
+
+    st.pydeck_chart(pdk.Deck(layers=layers, initial_view_state=view, map_style='light', tooltip=TOOLTIP),
+                    on_select=map_clicked, selection_mode='single-object', key='estimate_map', height=380)
+
     st.subheader('Describe the house')
     c1, c2 = st.columns(2)
     district = c1.selectbox('District', districts, key='district', on_change=district_changed)
