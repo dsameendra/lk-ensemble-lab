@@ -1,0 +1,26 @@
+{
+  "features": {
+    "land_size_perches": 16.0,
+    "latitude": 8.031599,
+    "longitude": 79.8300293,
+    "is_verified": 0,
+    "is_member": 1.0,
+    "residential": 1,
+    "commercial": 0,
+    "agricultural": 0,
+    "main_road": 0,
+    "highway": 0,
+    "clear_deed": 0,
+    "near_town": 1,
+    "bare_land": 0,
+    "water": 0,
+    "electricity": 0,
+    "lake_or_beach": 1,
+    "paddy": 0,
+    "investment": 0,
+    "location": "Puttalam City",
+    "district": "Puttalam",
+    "membership_level": "premium"
+  },
+  "actual_price_per_perch": 350000.0
+}
