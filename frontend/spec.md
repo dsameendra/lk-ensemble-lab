@@ -26,11 +26,19 @@ streamlit app that loads the trained pipeline (`model/house_price_model.pkl`) an
 ## inputs (match the training columns)
 bedrooms, bathrooms, house_size_sqft, land_size_perches, posted_month, is_verified, location, district, membership_level, is_member
 
+- area is one searchable list of "location, district", busiest first. it fills location and district
+- bedrooms 1 to 8, bathrooms 1 to 6, house size 300 to 8000 sqft, land 1 to 100 perches, as sliders. the tooltip shows the range most ads have
+- membership, member, verified and posted month sit under "listing details", with a note that they shift the price
+- posted month only offers oct to mar, the months with enough ads
+
 ## behaviour
 - model and data loaded once and cached
 - location options depend on the district, rare locations are not offered
 - clicking a map dot sets district and location in the form
 - months with too few ads are left out of the timeline
+- odd inputs (tight bedrooms, more bathrooms than bedrooms, very big house or plot, area with under 100 ads) show a warning, the estimate still shows
+- on a phone the price stays pinned at the bottom, on a desktop the result card stays in view
+- the price counts from the last estimate and the range pin slides, nothing moves when the user prefers reduced motion
 
 ## look
 - custom css, wide layout, default menu and footer hidden
@@ -41,4 +49,7 @@ bedrooms, bathrooms, house_size_sqft, land_size_perches, posted_month, is_verifi
 - [x] app starts with `streamlit run frontend/app.py`
 - [x] changing a field changes the prediction
 - [x] held out listing gives the same prediction as the notebook
-- [ ] checked on a phone width
+- [x] checked on a phone width
+- [x] readable in light and dark mode
+- [x] odd inputs show a warning
+- [x] charts and maps have a text description
