@@ -1,6 +1,6 @@
 # perch: frontend spec
 
-streamlit app that loads the trained pipeline (`model/house_price_model.pkl`) and lets a user estimate the asking price of a house in sri lanka, and explore prices on a map.
+streamlit app that loads the trained pipelines in `model/` (random forest, xgboost, stacking) and lets a user estimate the asking price of a house in sri lanka, and explore prices on a map.
 
 ## goals
 - estimate a price from the details a user enters, with a range so it is not read as exact
@@ -11,6 +11,7 @@ streamlit app that loads the trained pipeline (`model/house_price_model.pkl`) an
 ## pages (tabs)
 1. **estimate a price**
    - map of areas (dot size = number of ads, colour = median price), click to choose the location
+   - model chooser: stacking (default), xgboost, random forest or voting, with its test error shown
    - form: district, location, bedrooms, bathrooms, house size, land size, seller details (membership, member, verified, month posted)
    - result: price in rupees and short form, likely range (estimate times and divided by exp(test rmsle)), position against district listings, price per sqft and per perch
    - extras from the model: same house in other busy areas, price as house size grows
@@ -32,6 +33,8 @@ bedrooms, bathrooms, house_size_sqft, land_size_perches, posted_month, is_verifi
 - posted month only offers oct to mar, the months with enough ads
 
 ## behaviour
+- the chosen model changes the estimate, the range, the area comparison and the size curve
+- voting is the mean of the random forest and xgboost log predictions, so it needs no file of its own
 - model and data loaded once and cached
 - location options depend on the district, rare locations are not offered
 - clicking a map dot sets district and location in the form

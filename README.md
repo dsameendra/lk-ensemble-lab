@@ -24,7 +24,7 @@ scored on a 20% test set (rmsle on log price, lower is better):
 | voting (rf + xgb) | 0.378 | 0.796 | 17.3% |
 | stacking (rf + xgb) | 0.376 | 0.798 | 17.5% |
 
-xgboost beats the random forest, and voting and stacking add very little on top. the saved model is the stacking one. details, strengths, limitations and interpretation are in `notebooks/modelling.ipynb`.
+xgboost beats the random forest, and voting and stacking add very little on top. the app lets you choose between stacking (default), xgboost, random forest and voting. details, strengths, limitations and interpretation are in `notebooks/modelling.ipynb`.
 
 ## structure
 

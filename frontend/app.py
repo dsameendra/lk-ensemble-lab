@@ -122,8 +122,8 @@ div[data-testid="stColumn"]:has(.st-key-result_sticky) { align-self: stretch; }
 
 # ---------- loading ----------
 @st.cache_resource
-def load_model():
-    with open(ROOT / 'model' / 'house_price_model.pkl', 'rb') as f:
+def load_model(name):
+    with open(ROOT / 'model' / f'{name}.pkl', 'rb') as f:
         return pickle.load(f)
 
 
@@ -143,8 +143,8 @@ def load_houses():
 
 
 try:
-    model = load_model()
     meta = load_json('model_meta.json')
+    load_model('stacking')
     sample = load_json('holdout_sample.json')
     houses = load_houses()
 except FileNotFoundError:
@@ -154,6 +154,23 @@ except FileNotFoundError:
 
 def short(price):
     return f'Rs {price / 1e6:,.1f} M'
+
+
+MODELS = {
+    'Stacking': ('stacking', 'Learns how much to trust the forest and xgboost. Lowest error in the tests.'),
+    'XGBoost': ('xgboost', 'Boosted trees that fix each other\'s mistakes. Best single model.'),
+    'Random forest': ('random_forest', 'Many deep trees averaged. Steady, slightly less accurate.'),
+    'Voting': ('voting', 'Plain average of the random forest and xgboost.'),
+}
+
+
+def predict(frame, choice):
+    # voting is the mean of the two log predictions, same as in the notebook
+    if choice == 'voting':
+        rf = load_model('random_forest').predict(frame)
+        xgb = load_model('xgboost').predict(frame)
+        return np.expm1((np.log1p(rf) + np.log1p(xgb)) / 2)
+    return load_model(choice).predict(frame)
 
 
 def area_stats(data):
@@ -320,6 +337,13 @@ with tab_est:
                 is_verified = c9.selectbox('Verified', ['No', 'Yes'], key='is_verified', on_change=reset_flag)
                 month = c10.selectbox('Posted in', MONTH_OPTIONS, key='month', on_change=reset_flag)
 
+            model_label = st.segmented_control('Model', list(MODELS), default='Stacking', key='model_choice',
+                                               help='All four were trained on the same ads and scored on the same test set.')
+            if model_label is None:
+                model_label = 'Stacking'
+            model_name, model_note = MODELS[model_label]
+            st.caption(f'{model_note} Test error {meta["test_rmsle"][model_name.replace("_", " ")]:.3f} rmsle.')
+
             st.button('Try a real listing the model never saw', on_click=load_sample)
 
         extras = st.container()
@@ -336,10 +360,10 @@ with tab_est:
         row.update(changes)
         return row
 
-    price = float(model.predict(pd.DataFrame([make_row()]))[0])
+    price = float(predict(pd.DataFrame([make_row()]), model_name)[0])
 
     # about 68% of listings fall inside +/- one test rmsle on the log scale
-    spread = np.exp(meta['test_rmsle'])
+    spread = np.exp(meta['test_rmsle'][model_name.replace('_', ' ')])
     low, high = price / spread, price * spread
 
     # the price and the pin slide from the last estimate, they only move when it changed
@@ -394,7 +418,7 @@ with tab_est:
                 .query('ads >= 100').sort_values('ads', ascending=False).head(12))
         busy = busy[[(d, l) in known for d, l in zip(busy['district'], busy['location'])]]
         what_if = pd.DataFrame([make_row(location=l, district=d) for l, d in zip(busy['location'], busy['district'])])
-        compare = pd.Series(model.predict(what_if) / 1e6, index=busy['location'].values, name='Rs million')
+        compare = pd.Series(predict(what_if, model_name) / 1e6, index=busy['location'].values, name='Rs million')
 
         with st.expander('Compare with other areas and sizes'):
             st.subheader('The same house elsewhere')
@@ -405,10 +429,10 @@ with tab_est:
             sizes = np.arange(500, 6001, 250)
             curve = pd.DataFrame([make_row(house_size_sqft=int(s)) for s in sizes])
             st.subheader('Price as the house gets bigger')
-            st.line_chart(pd.Series(model.predict(curve) / 1e6, index=sizes, name='Rs million'), color=SAFFRON, height=240,
+            st.line_chart(pd.Series(predict(curve, model_name) / 1e6, index=sizes, name='Rs million'), color=SAFFRON, height=240,
                           alt='Line chart of the estimated price in Rs million as house size grows from 500 to 6,000 sqft.')
 
-        st.caption(f'Estimates are based on asking prices from ads, not final sale prices. Model: {meta["model"]}.')
+        st.caption(f'Estimates are based on asking prices from ads, not final sale prices. Model: {model_label}.')
 
     # on a phone the card is far below the form, so the price stays pinned at the bottom
     st.markdown(f'<div class="price-bar"><span>Estimated asking price</span><b>{short(price)}</b></div>', unsafe_allow_html=True)
@@ -520,7 +544,7 @@ with tab_about:
     st.subheader('How the estimate is made')
     st.markdown(f"""
     The price comes from a pickled scikit-learn pipeline: preprocessing (imputing, scaling, one hot encoding of
-    locations) followed by **{meta['model']}**, trained on house ads from ikman.lk. The model predicts the log of the
+    locations) followed by the model you pick on the first tab (stacking by default), trained on house ads from ikman.lk. The model predicts the log of the
     price, and the range shown is one test error either side (about 68% of ads fall inside it).
 
     - Reposted ads were removed before training so the test score is not flattering.
