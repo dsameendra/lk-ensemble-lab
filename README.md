@@ -33,7 +33,7 @@ data/raw         kagglehub downloads (not tracked)
 data/processed   cleaned houses and location coordinates
 notebooks/       eda, modelling, location coordinates
 model/           pickled pipeline, held out sample, app metadata
-frontend/        streamlit app (perch), spec and prompts
+frontend/        streamlit app (perch) and its spec
 ```
 
 notebooks run in order: `eda`, `modelling`, `locations`.
