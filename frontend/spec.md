@@ -15,18 +15,22 @@ streamlit app with two pages, houses and land. it loads the trained pipelines in
 - `app_pages/houses.py`: house prices (random forest, xgboost, stacking, voting)
 - `app_pages/land.py`: land price per perch (stacking, voting, xgboost, lightgbm, catboost, random forest)
 
-## each page has three tabs
+## each page has four tabs
 1. **estimate a price**
-   - map of areas (dot size = number of ads, colour = median price), click to choose the area
-   - form, model chooser with its test error, result card with a likely range
+   - form on the left with district and city lists, map on the right with plenty of height (dot size = number of ads, colour = median price), click a dot to choose the area
+   - model chooser with its test error, result card with a likely range
      (estimate times and divided by exp(test rmsle), about 68% of ads), position against the district, small tiles
    - extras from the model: the same house or plot in other busy areas, price as size grows
    - button to load a real listing the model never saw and compare with its real price
-2. **price map**
+2. **compare models**
+   - the same house or plot priced by every model, with how far apart they are
+   - typical miss of every model and baseline, full score table
+   - a card per model: how it works, good at, watch out, its scores
+3. **price map**
    - metric, map style (3d columns, heatmap, bubbles), filters, timeline slider (oct 2022 to mar 2023) with a play button
    - kpis, median price by month for chosen districts, top and bottom areas
-3. **about the model**
-   - how the estimate is made, model comparison, feature importance, caveats
+4. **about the model**
+   - how the estimate is made, feature importance, caveats
    - land page also shows the leave-features-out table and the stack weights
 
 ## inputs
@@ -38,13 +42,13 @@ streamlit app with two pages, houses and land. it loads the trained pipelines in
 - the chosen model changes the estimate, the range, the area comparison and the size curve
 - voting is the mean of the tree models on the log price, computed from the base models inside the saved stack
 - area options only include places with enough ads for the model
-- clicking a map dot sets the area in the form
+- clicking a map dot sets the district and city in the form, changing the district resets the city
 - months with too few ads are left out of the timeline
 - soft warnings for unusual input, the estimate still shows
 
 ## look
 - custom css, wide layout, default menu and footer hidden
-- deep green top bar and header with a saffron accent, white cards, one font pair
+- deep green top bar and header in one band, saffron accents and active page link, white cards, one font pair
 - layout follows the design mock
 
 ## acceptance checks
@@ -52,4 +56,5 @@ streamlit app with two pages, houses and land. it loads the trained pipelines in
 - [x] changing a field changes the prediction
 - [x] each model gives a different estimate
 - [x] held out listings give the same prediction as the notebooks (houses and land)
-- [ ] checked on a phone width
+- [x] checked on a phone width, no sideways scroll
+- [x] months on the trend chart are in time order

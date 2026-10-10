@@ -7,10 +7,9 @@ import pydeck as pdk
 import streamlit as st
 
 from shared import (ROOT, TIMELINE, TIMELINE_LABELS, GREEN, SAFFRON, TOOLTIP_STYLE,
-                    colour_scale, inject_css, load_json, short, topbar)
+                    colour_scale, hero, inject_css, load_json, model_bars, model_card, month_chart, short)
 
 inject_css()
-topbar()
 
 TREES = ['rf', 'xgb', 'lgbm', 'cat']
 MODELS = {
@@ -21,6 +20,8 @@ MODELS = {
     'Random forest': ('random forest', 'Many deep trees averaged.'),
     'Voting': ('voting', 'Plain average of the four tree models.'),
 }
+RESULT_ROW = {'stacking': 'stacking (trees + ridge + knn)', 'xgboost': 'xgboost (tuned)', 'lightgbm': 'lightgbm (tuned)',
+              'catboost': 'catboost (tuned)', 'random forest': 'random forest (tuned)', 'voting': 'voting (4 trees)'}
 BASE_NAME = {'xgboost': 'xgb', 'lightgbm': 'lgbm', 'catboost': 'cat', 'random forest': 'rf'}
 WORDS = {'main_road': 'Main road', 'highway': 'Near highway', 'clear_deed': 'Clear deed', 'near_town': 'Near town',
          'bare_land': 'Bare land', 'water': 'Water', 'electricity': 'Electricity', 'lake_or_beach': 'Lake or beach',
@@ -84,8 +85,9 @@ TOOLTIP = {
 known = set((d, l) for d in meta['locations'] for l in meta['locations'][d])
 ad_counts = land.groupby(['district', 'location']).size()
 areas = sorted(known, key=lambda a: -ad_counts.get(a, 0))
+districts = sorted(meta['locations'])
 coord_of = land.drop_duplicates('location').set_index('location')[['latitude', 'longitude']]
-DEFAULTS = {'land_area': areas[0], 'land_size': 10.0, 'land_use': ['Residential'], 'land_words': [],
+DEFAULTS = {'land_district': areas[0][0], 'land_location': areas[0][1], 'land_size': 10.0, 'land_use': ['Residential'], 'land_words': [],
             'land_membership': 'free', 'land_member': 'No', 'land_verified': 'No'}
 for key, value in DEFAULTS.items():
     st.session_state.setdefault(key, value)
@@ -94,7 +96,7 @@ for key, value in DEFAULTS.items():
 def load_sample():
     f = sample['features']
     st.session_state.update({
-        'land_area': (f['district'], f['location']), 'land_size': float(f['land_size_perches']),
+        'land_district': f['district'], 'land_location': f['location'], 'land_size': float(f['land_size_perches']),
         'land_use': [u for u in USES if f[u.lower()]],
         'land_words': [WORDS[k] for k in WORDS if f[k]],
         'land_membership': f['membership_level'],
@@ -108,72 +110,42 @@ def reset_flag():
     st.session_state['land_sample'] = False
 
 
-def area_label(area):
-    district, location = area
-    return f'{location}, {district} ({ad_counts.get(area, 0):,} ads)'
+def district_changed():
+    # a new district starts on its busiest city
+    d = st.session_state['land_district']
+    st.session_state['land_location'] = max(meta['locations'][d], key=lambda l: ad_counts.get((d, l), 0))
+    reset_flag()
 
 
 def map_clicked():
     picked = st.session_state['land_map'].selection.objects.get('places', [])
     if picked:
-        st.session_state['land_area'] = (picked[0]['district'], picked[0]['location'])
+        st.session_state['land_district'] = picked[0]['district']
+        st.session_state['land_location'] = picked[0]['location']
         reset_flag()
 
 
 # ---------- header ----------
-st.markdown("""
-<div class="hero">
-  <h1>What is a plot of land worth, per perch?</h1>
-  <p>Pick an area, say how big the plot is and what the ad says about it. Perch gives a price per perch
-  and a total. Or explore how land prices differ from town to town. Built from ikman.lk land ads.</p>
-</div>
-""", unsafe_allow_html=True)
+hero('What is a plot of land worth, per perch?',
+     'Pick an area, say how big the plot is and what the ad says about it. Perch gives a price per perch and a total, '
+     'and shows how six models and four simple baselines compare on it.',
+     [f'{len(land):,} land ads', '6 models', 'Sep 2022 to Apr 2023'], current='land')
 
-st.markdown('<div class="body">', unsafe_allow_html=True)
-tab_est, tab_map, tab_about = st.tabs(['Estimate a price', 'Price map', 'About the model'])
+tab_est, tab_compare, tab_map, tab_about = st.tabs(['Estimate a price', 'Compare models', 'Price map', 'About the model'])
 
 # =====================================================================
 # tab 1: estimate
 # =====================================================================
 with tab_est:
-    left, right = st.columns([3, 2], gap='large')
+    left, right = st.columns([2, 3], gap='large')
 
     with left:
-        with st.container(key='card_map'):
-            st.markdown('### 1. Choose the area')
-            st.caption('Click a dot to pick the area. Bigger dots have more ads.')
-
-            places = area_stats(land)
-            places = places[[(d, l) in known for d, l in zip(places['district'], places['location'])]].copy()
-            places['radius'] = 900 + np.sqrt(places['ads']) * 120
-            places['colour'] = colour_scale(places['median_price'].values)
-
-            picked_district, picked_location = st.session_state['land_area']
-            current = places[(places['district'] == picked_district) & (places['location'] == picked_location)]
-            layers = [pdk.Layer('ScatterplotLayer', data=places, id='places', pickable=True,
-                                get_position='[longitude, latitude]', get_radius='radius', radius_min_pixels=5,
-                                radius_max_pixels=28, get_fill_color='colour', stroked=True,
-                                get_line_color=[255, 255, 255], line_width_min_pixels=1)]
-            if len(current):
-                layers.append(pdk.Layer('ScatterplotLayer', data=current, get_position='[longitude, latitude]',
-                                        get_radius='radius', radius_min_pixels=9, radius_max_pixels=34,
-                                        get_fill_color=[242, 184, 75, 230], stroked=True,
-                                        get_line_color=[16, 35, 31], line_width_min_pixels=2))
-                view = pdk.ViewState(latitude=float(current['latitude'].iloc[0]),
-                                     longitude=float(current['longitude'].iloc[0]), zoom=9.5)
-            else:
-                view = pdk.ViewState(latitude=7.6, longitude=80.7, zoom=6.6)
-
-            st.pydeck_chart(pdk.Deck(layers=layers, initial_view_state=view, map_style='light', tooltip=TOOLTIP),
-                            on_select=map_clicked, selection_mode='single-object', key='land_map', height=380,
-                            alt='Map of Sri Lanka with a dot for every area that has land ads. Bigger dots have more ads and '
-                                'darker dots have higher median prices per perch. The Area list below makes the same choice.')
-
-        st.write('')
         with st.container(key='card_form'):
-            st.markdown('### 2. Describe the plot')
-            district, location = st.selectbox('Area', areas, key='land_area', format_func=area_label, on_change=reset_flag,
-                                              help='Type to search. Clicking a dot on the map sets this too.')
+            st.markdown('### Describe the plot')
+            c1, c2 = st.columns(2)
+            district = c1.selectbox('District', districts, key='land_district', on_change=district_changed)
+            location = c2.selectbox('City', sorted(meta['locations'][district]), key='land_location', on_change=reset_flag,
+                                    help='Type to search. Clicking a dot on the map sets both.')
             lo, hi = land['land_size_perches'].quantile([.05, .95])
             size = st.slider('Land size (perches)', 1.0, 100.0, step=0.5, key='land_size', on_change=reset_flag,
                              help=f'Most ads have {lo:,.0f} to {hi:,.0f} perches. 1 acre is 160 perches.')
@@ -206,8 +178,6 @@ with tab_est:
 
             st.button('Try a real listing the model never saw', on_click=load_sample, key='land_try')
 
-        extras = st.container()
-
     def make_row(**changes):
         lat, lon = coord_of.loc[location, ['latitude', 'longitude']]
         row = {
@@ -222,6 +192,7 @@ with tab_est:
         return row
 
     price = float(predict(pd.DataFrame([make_row()]), model_name)[0])
+    typical_miss = next(r['median abs % error'] for r in meta['results'] if r['model'] == RESULT_ROW[model_name])
     spread = np.exp(meta['test_rmsle'][model_name])
     low, high = price / spread, price * spread
 
@@ -231,43 +202,74 @@ with tab_est:
     last_pos = st.session_state.get('land_shown', pos)
     st.session_state['land_shown'] = pos
 
+    with left:
+        if quantiles:
+            st.markdown(f"""
+            <div class="card" style="margin-top: .2rem">
+              <div class="label">Against {district} listings</div>
+              <div class="bar"><div class="pin" style="--pos: {pos}%; --pin-from: {last_pos}%"></div></div>
+              <div class="bar-labels"><span>{rs(quantiles[2])}</span><span>median {rs(quantiles[50])}</span><span>{rs(quantiles[98])}</span></div>
+              <div class="sub" style="margin-top: .6rem">Priced above about {pct:.0f}% of land ads in {district}.</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div class="tiles" style="margin-top: 1rem">
+          <div class="tile"><div class="label">Total price</div><div class="v">{short(price * size)}</div></div>
+          <div class="tile"><div class="label">Per acre</div><div class="v">{short(price * 160)}</div></div>
+        </div>
+        """, unsafe_allow_html=True)
+
     with right:
-        with st.container(key='result_sticky'):
+        st.markdown(f"""
+        <div class="card est" id="result" role="status">
+          <div class="label">Estimated price per perch</div>
+          <div class="big">{rs(price)}</div>
+          <div class="sub">{size:g} perches comes to {short(price * size)} <span class="by">by {label}</span></div>
+          <div class="range">Likely range: {rs(low)} to {rs(high)} per perch<br>
+          <span class="note">About 2 in 3 ads like this one fall inside it.</span></div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.session_state.get('land_sample'):
+            actual = sample['actual_price_per_perch']
+            err = abs(price - actual) / actual * 100
             st.markdown(f"""
-            <div class="card est" id="result" role="status">
-              <div class="label">Estimated price per perch</div>
-              <div class="big">{rs(price)}</div>
-              <div class="sub">{size:g} perches comes to {short(price * size)}</div>
-              <div class="range">Likely range: {rs(low)} to {rs(high)} per perch<br>
-              <span class="note">About 2 in 3 ads like this one fall inside it.</span></div>
-            </div>
+            <div class="check"><b>A real listing the model never saw.</b>
+            The real asking price was {rs(actual)} per perch, so the estimate is off by {err:.1f}%.
+            One listing is not a score: over the whole test set the typical miss of {label} is {typical_miss:.0f}%.</div>
             """, unsafe_allow_html=True)
 
-            if quantiles:
-                st.markdown(f"""
-                <div class="card" style="margin-top: 1rem">
-                  <div class="label">Against {district} listings</div>
-                  <div class="bar"><div class="pin" style="--pos: {pos}%; --pin-from: {last_pos}%"></div></div>
-                  <div class="bar-labels"><span>{rs(quantiles[2])}</span><span>median {rs(quantiles[50])}</span><span>{rs(quantiles[98])}</span></div>
-                  <div class="sub" style="margin-top: .6rem">Priced above about {pct:.0f}% of land ads in {district}.</div>
-                </div>
-                """, unsafe_allow_html=True)
+        st.write('')
+        with st.container(key='card_map'):
+            st.markdown('### Pick on the map')
+            st.caption('Click a dot to set the district and city. Bigger dots have more ads, darker dots cost more.')
+            places = area_stats(land)
+            places = places[[(d, l) in known for d, l in zip(places['district'], places['location'])]].copy()
+            places['radius'] = 900 + np.sqrt(places['ads']) * 120
+            places['colour'] = colour_scale(places['median_price'].values)
 
-            st.markdown(f"""
-            <div class="tiles" style="margin-top: 1rem">
-              <div class="tile"><div class="label">Total price</div><div class="v">{short(price * size)}</div></div>
-              <div class="tile"><div class="label">Per acre</div><div class="v">{short(price * 160)}</div></div>
-            </div>
-            """, unsafe_allow_html=True)
+            current = places[(places['district'] == district) & (places['location'] == location)]
+            layers = [pdk.Layer('ScatterplotLayer', data=places, id='places', pickable=True,
+                                get_position='[longitude, latitude]', get_radius='radius', radius_min_pixels=5,
+                                radius_max_pixels=28, get_fill_color='colour', stroked=True,
+                                get_line_color=[255, 255, 255], line_width_min_pixels=1)]
+            if len(current):
+                layers.append(pdk.Layer('ScatterplotLayer', data=current, get_position='[longitude, latitude]',
+                                        get_radius='radius', radius_min_pixels=9, radius_max_pixels=34,
+                                        get_fill_color=[242, 184, 75, 230], stroked=True,
+                                        get_line_color=[16, 35, 31], line_width_min_pixels=2))
+                view = pdk.ViewState(latitude=float(current['latitude'].iloc[0]),
+                                     longitude=float(current['longitude'].iloc[0]), zoom=9)
+            else:
+                view = pdk.ViewState(latitude=7.6, longitude=80.7, zoom=6.6)
 
-            if st.session_state.get('land_sample'):
-                actual = sample['actual_price_per_perch']
-                err = abs(price - actual) / actual * 100
-                st.markdown(f"""
-                <div class="check"><b>A real listing the model never saw.</b>
-                The real asking price was {rs(actual)} per perch, so the estimate is off by {err:.1f}%.</div>
-                """, unsafe_allow_html=True)
+            st.pydeck_chart(pdk.Deck(layers=layers, initial_view_state=view, map_style='light', tooltip=TOOLTIP),
+                            on_select=map_clicked, selection_mode='single-object', key='land_map', height=560,
+                            alt='Map of Sri Lanka with a dot for every area that has land ads. Bigger dots have more ads and darker dots have higher median prices per perch. The district and city lists make the same choice.')
 
+    extras = st.container()
+    st.markdown(f'<div class="price-bar"><span>Price per perch</span><b>{rs(price)}</b></div>', unsafe_allow_html=True)
     with extras:
         busy = (land.groupby(['location', 'district']).size().rename('ads').reset_index()
                 .query('ads >= 200').sort_values('ads', ascending=False).head(12))
@@ -290,7 +292,93 @@ with tab_est:
         st.caption(f'Estimates are based on asking prices from ads, not final sale prices. Model: {label}.')
 
 # =====================================================================
-# tab 2: price map with timeline
+# tab 2: all models side by side
+# =====================================================================
+with tab_compare:
+    st.subheader('The same plot, six models')
+    frame = pd.DataFrame([make_row()])
+    estimates = {lab: float(predict(frame, MODELS[lab][0])[0]) for lab in MODELS}
+    mid = float(np.median(list(estimates.values())))
+    gap = (max(estimates.values()) - min(estimates.values())) / mid * 100
+    st.markdown(f'<div class="verdict">For the plot set on the first tab, the six models are within <b>{gap:.0f}%</b> '
+                f'of each other. The model you picked there is the dark bar.</div>', unsafe_allow_html=True)
+    st.write('')
+    with st.container(key='card_models'):
+        st.markdown('### Estimated price per perch')
+        model_bars(list(estimates.items()), label, rs)
+
+    results = pd.DataFrame(meta['results']).set_index('model')
+    kind = pd.Series('single tree model', index=results.index)
+    kind[results.index.str.startswith(('district', 'location', 'ridge', 'knn'))] = 'simple baseline'
+    kind[results.index.str.startswith(('voting', 'stacking'))] = 'ensemble'
+    ranked = results[~results.index.str.contains('default|stacking \\(4')].sort_values('median abs % error', ascending=False)
+
+    st.subheader('How they scored on ads they never saw')
+    with st.container(key='card_scores'):
+        st.markdown('### Typical miss on the test set')
+        st.caption('Median absolute error as a share of the real price. Shorter is better.')
+        model_bars([(m, v) for m, v in ranked['median abs % error'].items()], None, lambda v: f'{v:.1f}%')
+
+    table = results.assign(type=kind).sort_values('rmsle')
+    st.dataframe(table[['type', 'rmsle', 'r2 (log)', 'mae (rs k)', 'median abs % error']], width='stretch', height=(len(table) + 1) * 35 + 3,
+                 column_config={'rmsle': st.column_config.NumberColumn(format='%.3f'), 'r2 (log)': st.column_config.NumberColumn(format='%.3f'),
+                                'mae (rs k)': st.column_config.NumberColumn(format='%.0f'), 'median abs % error': st.column_config.NumberColumn('median miss %', format='%.1f')})
+
+    st.subheader('What each model is')
+    INFO = {
+        'Stacking': ('stacking (trees + ridge + knn)',
+                     'Takes the predictions of the four tree models, a ridge regression and a nearest neighbour model on the map, then a simple linear model learns how much to trust each.',
+                     'Lowest error overall, and it keeps working if one model is off for a plot.',
+                     'Only about 0.001 rmsle better than xgboost, which is inside the noise. It is also the biggest and slowest to load.'),
+        'XGBoost': ('xgboost (tuned)',
+                    'Builds trees one after another, each one fixing the mistakes of the ones before. Cities are one hot encoded and rare ones are grouped.',
+                    'Best single model, and the one the shap importance and the leave-out check are run on.',
+                    'Many settings to tune, and it can lean on the main cities when a city has few ads.'),
+        'LightGBM': ('lightgbm (tuned)',
+                     'Boosted trees grown leaf by leaf. It reads district, city and membership as categories directly instead of one hot columns.',
+                     'Fast to train and as accurate as the forest.',
+                     'A city with only a handful of ads can get a split to itself, so small cities are noisy.'),
+        'CatBoost': ('catboost (tuned)',
+                     'Boosted trees with its own handling of categories. It turns each category into a number from the prices seen before it in a shuffled order.',
+                     'Steady with many cities and little tuning needed.',
+                     'Slowest to train, and its error is the same as the others here.'),
+        'Random forest': ('random forest (tuned)',
+                          'Many deep trees, each trained on a random sample of ads and features, then averaged.',
+                          'Hard to overfit, and it has the lowest typical miss in percent before ensembling.',
+                          'Large file, and slightly worse than boosting on the log price.'),
+        'Voting': ('voting (4 trees)',
+                   'A plain average of the four tree models, no learning on top.',
+                   'Simple, and smooths out the odd bad guess from one model.',
+                   'Treats all four as equally good, which the stack weights show they are not.'),
+    }
+    weight_of = {'Stacking': None, 'XGBoost': 'xgb', 'LightGBM': 'lgbm', 'CatBoost': 'cat', 'Random forest': 'rf', 'Voting': None}
+    names = list(INFO)
+    for row in range(0, len(names), 2):
+        cols = st.columns(2, gap='large')
+        for col, nm in zip(cols, names[row:row + 2]):
+            key, how, good, watch = INFO[nm]
+            r = results.loc[key]
+            stats = [('rmsle', f'{r["rmsle"]:.3f}'), ('typical miss', f'{r["median abs % error"]:.0f}%')]
+            if weight_of[nm]:
+                stats.append(('weight in stack', f'{meta["stack_weights"][weight_of[nm]]:.2f}'))
+            with col:
+                model_card(nm, nm == label, how, good, watch, stats)
+        st.write('')
+
+    base = results.loc[results.index.str.startswith(('district', 'location', 'ridge', 'knn')), 'rmsle'].min()
+    trees = results.loc[~results.index.str.startswith(('district', 'location', 'ridge', 'knn', 'voting', 'stacking')), 'rmsle']
+    st.write('')
+    st.markdown(f'<div class="verdict">Every tree model beats the best simple baseline ({base:.3f} rmsle) by a clear margin, '
+                f'the best at {trees.min():.3f}. The ensembles then add almost nothing: the stack is '
+                f'{trees.min() - results.loc["stacking (trees + ridge + knn)", "rmsle"]:.3f} rmsle better than the best single model, '
+                'which is inside the noise between runs. A typical miss stays around 32% because the ads say little about the plot itself.</div>',
+                unsafe_allow_html=True)
+    st.write('')
+    st.caption('rmsle is the typical miss on the log price, lower is better. r2 is how much of the price spread the model explains. '
+               'mae is in Rs thousand per perch. All scored on the same 20% of ads kept aside.')
+
+# =====================================================================
+# tab 3: price map with timeline
 # =====================================================================
 with tab_map:
     with st.container(key='card_controls'):
@@ -322,7 +410,7 @@ with tab_map:
             slot.info('No areas have enough ads for this filter.')
             return stats
         stats['colour'] = colour_scale(stats[value_col].values)
-        stats['elevation'] = stats[value_col] / stats[value_col].max() * 90000
+        stats['elevation'] = np.minimum(stats[value_col] / np.percentile(stats[value_col], 95), 1.2) * 40000
         stats['radius'] = 1000 + np.sqrt(stats['ads']) * 140
         stats['value'] = stats[value_col]
 
@@ -378,8 +466,8 @@ with tab_map:
             by_month = sub.groupby('posted_month')['price_per_perch'].agg(['median', 'size'])
             by_month = by_month[by_month['size'] >= 30]
             lines[name] = pd.Series([by_month['median'].get(m, np.nan) / 1e3 for _, m in TIMELINE], index=TIMELINE_LABELS)
-        st.line_chart(pd.DataFrame(lines), height=300,
-                      alt='Line chart of the median asking price per perch in Rs thousand for each month, for the whole island and the chosen districts.')
+        month_chart(pd.DataFrame(lines), 'Rs thousand per perch',
+                    'Line chart of the median asking price per perch in Rs thousand for each month, for the whole island and the chosen districts.')
         st.caption('Median asking price per perch in Rs thousand. A month is left out for a district when it has fewer than 30 ads.')
     with c2:
         st.subheader('Most and least expensive areas')
@@ -393,7 +481,7 @@ with tab_map:
         st.dataframe(table.tail(8), hide_index=True, width='stretch')
 
 # =====================================================================
-# tab 3: about
+# tab 4: about
 # =====================================================================
 with tab_about:
     st.subheader('How the estimate is made')
@@ -408,28 +496,19 @@ with tab_about:
     - Ads cover Sep 2022 to Apr 2023 only. Land is much harder to predict than houses: the typical miss is about 32%.
     """)
 
-    results = pd.DataFrame(meta['results']).set_index('model').sort_values('rmsle')
     c1, c2 = st.columns(2, gap='large')
     with c1:
-        st.subheader('Model comparison')
-        st.dataframe(results.round(3), width='stretch')
-        st.caption('rmsle is the typical miss on the log price, lower is better. r2 is how much of the price spread the model explains. mae is in Rs thousand per perch. Scored on 20% of the ads kept aside. District median, location median, ridge and knn are the simple approaches to beat.')
-    with c2:
         st.subheader('What drives the price')
         importance = pd.Series(meta['importance']).sort_values(ascending=False)
         st.bar_chart(importance, horizontal=True, sort=False, color=GREEN, height=420,
                      alt='Bar chart of the average effect of each feature on the predicted log price per perch.')
         st.caption('Average shap value for xgboost, longer means the feature moves the price more.')
-
-    c3, c4 = st.columns(2, gap='large')
-    with c3:
+    with c2:
         st.subheader('Leaving features out')
         st.dataframe(pd.DataFrame(meta['ablation']).set_index('what is left out').round(3), width='stretch')
         st.caption('xgboost with one group of features removed. Location and coordinates carry the same information, so removing one costs little but removing both costs a lot.')
-    with c4:
         st.subheader('Weights inside the stack')
         weights = pd.Series(meta['stack_weights'], name='weight').round(3)
         st.dataframe(weights.to_frame(), width='stretch')
         st.caption('rf, xgb, lgbm and cat are the four tree models. Ridge gets no weight, the map based knn a small one.')
 
-st.markdown('</div>', unsafe_allow_html=True)
