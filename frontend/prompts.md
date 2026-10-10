@@ -14,3 +14,11 @@ build a small streamlit app that loads the pickle and shows text boxes and dropd
 - membership_level (free, plus, premium), is_member, is_verified, posted_month
 
 the model returns the price in rupees. show it with commas and also in millions.
+
+## 2. second prompt
+
+make it look like a proper website. custom css, a deep green header, saffron accent, white cards, nice fonts. add a likely price range using the test error of the model, and a button that loads a listing the model never saw and compares the prediction with the real price.
+
+## 3. third prompt
+
+add a map. users should be able to click an area to choose the location. add a second page with a price map across the island (3d columns, heatmap, bubbles), a timeline slider with a play button, and a chart of median price by month. add a page about the model with the comparison table and feature importance.
