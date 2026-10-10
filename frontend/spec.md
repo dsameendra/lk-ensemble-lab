@@ -1,58 +1,55 @@
 # perch: frontend spec
 
-streamlit app that loads the trained pipelines in `model/` (random forest, xgboost, stacking) and lets a user estimate the asking price of a house in sri lanka, and explore prices on a map.
+streamlit app with two pages, houses and land. it loads the trained pipelines in `model/` and lets a user estimate an asking price, and explore prices on a map.
 
 ## goals
 - estimate a price from the details a user enters, with a range so it is not read as exact
-- pick the location on a map instead of only a dropdown
+- pick the area on a map instead of only a dropdown
+- choose which model gives the estimate
 - show how asking prices differ by area and over the months
 - look like a small website, not a default streamlit page
 
-## pages (tabs)
+## structure
+- `app.py`: sets the page config and the navigation, nothing else
+- `shared.py`: css, top bar with the page links, small helpers
+- `app_pages/houses.py`: house prices (random forest, xgboost, stacking, voting)
+- `app_pages/land.py`: land price per perch (stacking, voting, xgboost, lightgbm, catboost, random forest)
+
+## each page has three tabs
 1. **estimate a price**
-   - map of areas (dot size = number of ads, colour = median price), click to choose the location
-   - model chooser: stacking (default), xgboost, random forest or voting, with its test error shown
-   - form: district, location, bedrooms, bathrooms, house size, land size, seller details (membership, member, verified, month posted)
-   - result: price in rupees and short form, likely range (estimate times and divided by exp(test rmsle)), position against district listings, price per sqft and per perch
-   - extras from the model: same house in other busy areas, price as house size grows
-   - button to load the held out listing and compare with its real price
+   - map of areas (dot size = number of ads, colour = median price), click to choose the area
+   - form, model chooser with its test error, result card with a likely range
+     (estimate times and divided by exp(test rmsle), about 68% of ads), position against the district, small tiles
+   - extras from the model: the same house or plot in other busy areas, price as size grows
+   - button to load a real listing the model never saw and compare with its real price
 2. **price map**
-   - metric: median price, price per sqft, number of ads
-   - style: 3d columns, heatmap, bubbles
-   - filters: bedrooms range, timeline slider (oct 2022 to mar 2023) with a play button
+   - metric, map style (3d columns, heatmap, bubbles), filters, timeline slider (oct 2022 to mar 2023) with a play button
    - kpis, median price by month for chosen districts, top and bottom areas
 3. **about the model**
-   - how the estimate is made, model comparison table, feature importance, caveats
+   - how the estimate is made, model comparison, feature importance, caveats
+   - land page also shows the leave-features-out table and the stack weights
 
-## inputs (match the training columns)
-bedrooms, bathrooms, house_size_sqft, land_size_perches, posted_month, is_verified, location, district, membership_level, is_member
-
-- area is one searchable list of "location, district", busiest first. it fills location and district
-- bedrooms 1 to 8, bathrooms 1 to 6, house size 300 to 8000 sqft, land 1 to 100 perches, as sliders. the tooltip shows the range most ads have
-- membership, member, verified and posted month sit under "listing details", with a note that they shift the price
-- posted month only offers oct to mar, the months with enough ads
+## inputs
+- houses: bedrooms, bathrooms, house size, land size, area, membership, member, verified, month posted
+- land: land size (perches), area, land use (residential, commercial, agricultural), words from the ad (main road, near highway, clear deed, near town, bare land, water, electricity, lake or beach, paddy, investment), membership, member, verified
 
 ## behaviour
+- models and data are loaded once and cached
 - the chosen model changes the estimate, the range, the area comparison and the size curve
-- voting is the mean of the random forest and xgboost log predictions, so it needs no file of its own
-- model and data loaded once and cached
-- location options depend on the district, rare locations are not offered
-- clicking a map dot sets district and location in the form
+- voting is the mean of the tree models on the log price, computed from the base models inside the saved stack
+- area options only include places with enough ads for the model
+- clicking a map dot sets the area in the form
 - months with too few ads are left out of the timeline
-- odd inputs (tight bedrooms, more bathrooms than bedrooms, very big house or plot, area with under 100 ads) show a warning, the estimate still shows
-- on a phone the price stays pinned at the bottom, on a desktop the result card stays in view
-- the price counts from the last estimate and the range pin slides, nothing moves when the user prefers reduced motion
+- soft warnings for unusual input, the estimate still shows
 
 ## look
 - custom css, wide layout, default menu and footer hidden
-- deep green header with a saffron accent, white cards, one font pair
+- deep green top bar and header with a saffron accent, white cards, one font pair
 - layout follows the design mock
 
 ## acceptance checks
 - [x] app starts with `streamlit run frontend/app.py`
 - [x] changing a field changes the prediction
-- [x] held out listing gives the same prediction as the notebook
-- [x] checked on a phone width
-- [x] readable in light and dark mode
-- [x] odd inputs show a warning
-- [x] charts and maps have a text description
+- [x] each model gives a different estimate
+- [x] held out listings give the same prediction as the notebooks (houses and land)
+- [ ] checked on a phone width
