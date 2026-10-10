@@ -1,0 +1,15 @@
+{
+  "features": {
+    "bedrooms": 6.0,
+    "bathrooms": 4.0,
+    "house_size_sqft": 3500.0,
+    "land_size_perches": 20.0,
+    "posted_month": 2.0,
+    "is_verified": 0,
+    "location": "Piliyandala",
+    "district": "Colombo",
+    "membership_level": "free",
+    "is_member": 0.0
+  },
+  "actual_price": 35000000.0
+}
