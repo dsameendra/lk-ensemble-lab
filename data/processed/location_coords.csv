@@ -1,10 +1,10 @@
 location,district,latitude,longitude
 Ahangama,Galle,5.9735163,80.3622999
-Akkarepattu,Ampara,,
+Akkarepattu,Ampara,7.2184,81.8541
 Akurana,Kandy,7.36032,80.60062
 Akuressa,Matara,6.1011778,80.4764879
 Alawwa,Kurunegala,7.2940156,80.2392415
-Alutgama,Kalutara,,
+Alutgama,Kalutara,6.4337,79.9993
 Ambalangoda,Galle,6.2389059,80.0541466
 Ambalantota,Hambantota,6.1224627,81.0238588
 Ampara City,Ampara,7.2978118,81.6790194
@@ -21,7 +21,7 @@ Bandaragama,Kalutara,6.7145129,79.9889673
 Bandarawela,Badulla,6.8304821,80.9888204
 Batapola,Galle,6.2452294,80.1114154
 Battaramulla,Colombo,6.9021809,79.9195776
-Batticaloa City,Batticaloa,7.7356027,81.6941956
+Batticaloa City,Batticaloa,7.7244732,81.6987174
 Beliatta,Hambantota,6.1301928,80.7084692
 Bentota,Galle,6.4215276,79.9978544
 Beruwala,Kalutara,6.4755855,79.9834066
@@ -67,7 +67,7 @@ Galenbindunuwewa,Anuradhapura,8.2924454,80.7189721
 Galewela,Matale,7.7596614,80.5710966
 Galgamuwa,Kurunegala,7.9956682,80.2706117
 Galigamuwa,Kegalle,7.2357407,80.3102645
-Galle City,Galle,6.0351924,80.2198384
+Galle City,Galle,6.0328139,80.214955
 Galnewa,Anuradhapura,8.0354832,80.4802068
 Gampaha City,Gampaha,7.0925595,79.9951396
 Gampola,Kandy,7.1636487,80.5702744
@@ -91,7 +91,7 @@ Horana,Kalutara,6.7166471,80.0619529
 Ibbagamuwa,Kurunegala,7.5479128,80.4496417
 Ingiriya,Kalutara,6.7437564,80.1766773
 Ja-Ela,Gampaha,7.0793775,79.8907632
-Jaffna City,Jaffna,9.6681701,80.0154995
+Jaffna City,Jaffna,9.665093,80.0093029
 Kadawatha,Gampaha,7.002137,79.9512274
 Kadugannawa,Kandy,7.2572795,80.5195206
 Kaduruwela,Polonnaruwa,7.9306474,81.032735
@@ -107,7 +107,7 @@ Kataragama,Monaragala,6.4135586,81.3324423
 Katugastota,Kandy,7.3220837,80.6249552
 Katunayake,Gampaha,7.156773,79.8716676
 Kegalle City,Kegalle,7.2532006,80.3454132
-Kekanadurra,Matara,,
+Kekanadurra,Matara,5.9751305,80.560618
 Kekirawa,Anuradhapura,8.0408329,80.5971017
 Kelaniya,Gampaha,6.9502334,79.9171903
 Kesbewa,Colombo,6.7957403,79.940848
@@ -123,7 +123,7 @@ Kuliyapitiya,Kurunegala,7.4701428,80.0440349
 Kundasale,Kandy,7.2804536,80.6844649
 Kurunegala City,Kurunegala,7.4870464,80.364908
 Kuruwita,Ratnapura,6.7761011,80.3668957
-Madawala Bazaar,Kandy,,
+Madawala Bazaar,Kandy,7.2804536,80.60062
 Madulla,Nuwara Eliya,7.0523951,80.9278679
 Maharagama,Colombo,6.8472783,79.9266082
 Mahiyanganaya,Badulla,7.3397139,80.9938726
@@ -131,7 +131,7 @@ Malabe,Colombo,6.9040723,79.9546189
 Mannar City,Mannar,8.9812896,79.9043942
 Marawila,Puttalam,7.4130318,79.8309525
 Matale City,Matale,7.4720453,80.6234307
-Matara City,Matara,5.949596,80.5447563
+Matara City,Matara,5.947822,80.5482919
 Matugama,Kalutara,6.5229542,80.1142603
 Mawanella,Kegalle,7.2523431,80.4459923
 Mawathagama,Kurunegala,7.4329884,80.4464094
@@ -142,10 +142,10 @@ Menikhinna,Kandy,7.3157156,80.7018465
 Mihintale,Anuradhapura,8.347538,80.5126963
 Minuwangoda,Gampaha,7.1692723,79.9484613
 Mirigama,Gampaha,7.2475144,80.1299215
-Monaragala City,Monaragala,,
+Monaragala City,Monaragala,6.872728,81.3505779
 Moratuwa,Colombo,6.7746821,79.8826095
 Mount Lavinia,Colombo,6.831684,79.8625654
-Mullativu City,Mullativu,,
+Mullativu City,Mullativu,9.2590874,80.7674306
 Nallur,Jaffna,9.6734908,80.0290277
 Narammala,Kurunegala,7.4306604,80.2143272
 Nattandiya,Puttalam,7.4121862,79.8643448
