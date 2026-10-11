@@ -13,21 +13,26 @@ perch is a streamlit app with two pages, houses and land. each page has four tab
 - **price map**: 3d columns, heatmap or bubbles of median prices by area, filters, a timeline with play, and the most and least expensive areas
 - **about the model**: how the estimate is made, what drives the price and, for land, the leave-features-out check and the stack weights
 
-### houses
+<table>
+  <tr>
+    <th>houses</th>
+    <th>land</th>
+  </tr>
+  <tr>
+    <td><img src="screenshots/houses_estimate.png" width="380" alt="houses estimate"></td>
+    <td><img src="screenshots/land_estimate.png" width="380" alt="land estimate"></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/houses_compare.png" width="380" alt="houses compare models"></td>
+    <td><img src="screenshots/land_map.png" width="380" alt="land price map"></td>
+  </tr>
+</table>
 
-![houses estimate](screenshots/houses_estimate.png)
+more screenshots, including the model comparison for land and the houses price map, are in `screenshots/`.
 
-![houses compare models](screenshots/houses_compare.png)
+## deployment
 
-### land
-
-![land estimate](screenshots/land_estimate.png)
-
-![land compare models](screenshots/land_compare.png)
-
-![land price map](screenshots/land_map.png)
-
-the houses price map looks the same, see `screenshots/houses_map.png`.
+the app is deployed on streamlit community cloud and open to anyone: [purch-lk.streamlit.app](https://purch-lk.streamlit.app/). it is built straight from the `main` branch, so every push redeploys it. a github actions workflow in `.github/workflows/deploy.yml` records each deployment under the repo environments.
 
 ## problem
 
@@ -93,6 +98,8 @@ notebooks/       house eda and modelling, land eda and modelling, location coord
 model/           pickled pipelines, held out samples, app metadata
 estimators.py    lightgbm and catboost wrappers needed to unpickle the land model
 frontend/        streamlit app (perch) with a houses and a land page, and its spec
+.github/         deployment workflow
+screenshots/     app screenshots
 ```
 
 notebooks run in order: `houses_eda`, `houses_modelling`, `locations`, `land_eda`, `land_modelling`.
@@ -107,7 +114,7 @@ pip install -r requirements.txt
 
 on a mac xgboost and lightgbm also need openmp: `brew install libomp`.
 
-## run the app
+## run the app locally
 
 ```
 streamlit run frontend/app.py
