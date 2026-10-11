@@ -32,7 +32,7 @@ USES = ['Residential', 'Commercial', 'Agricultural']
 # ---------- loading ----------
 @st.cache_resource
 def load_model():
-    with open(ROOT / 'model' / 'land_model.pkl', 'rb') as f:
+    with open(ROOT / 'model' / 'land_stacking.pkl', 'rb') as f:
         return pickle.load(f)
 
 

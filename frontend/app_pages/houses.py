@@ -15,7 +15,7 @@ inject_css()
 # ---------- loading ----------
 @st.cache_resource
 def load_model(name):
-    with open(ROOT / 'model' / f'{name}.pkl', 'rb') as f:
+    with open(ROOT / 'model' / f'houses_{name}.pkl', 'rb') as f:
         return pickle.load(f)
 
 
@@ -29,9 +29,9 @@ def load_houses():
 
 
 try:
-    meta = load_json('model_meta.json')
+    meta = load_json('houses_meta.json')
     load_model('stacking')
-    sample = load_json('holdout_sample.json')
+    sample = load_json('houses_holdout_sample.json')
     houses = load_houses()
 except FileNotFoundError:
     st.error('The model or data files are missing. Run the notebooks first, they save everything the app needs.')

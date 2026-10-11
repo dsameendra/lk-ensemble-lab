@@ -55,7 +55,7 @@ scored on a 20% test set (rmsle on log price, lower is better):
 | voting (rf + xgb) | 0.378 | 0.796 | 17.3% |
 | stacking (rf + xgb) | 0.376 | 0.798 | 17.5% |
 
-xgboost beats the random forest, and voting and stacking add very little on top. the app lets you choose between stacking (default), xgboost, random forest and voting. details, strengths, limitations and interpretation are in `notebooks/modelling.ipynb`.
+xgboost beats the random forest, and voting and stacking add very little on top. the app lets you choose between stacking (default), xgboost, random forest and voting. details, strengths, limitations and interpretation are in `notebooks/houses_modelling.ipynb`.
 
 ## results: land
 
@@ -74,7 +74,7 @@ scored on a 20% test set (rmsle on log price per perch, lower is better):
 | voting (4 trees) | 0.770 | 0.651 | 32.1% |
 | stacking (trees + ridge + knn) | 0.769 | 0.652 | 31.8% |
 
-all the tree models beat the baselines clearly, but they are very close to each other and the stack is only about 0.001 better than xgboost, which is inside the noise. a typical miss is still around 32%, because the ads say little about the plot itself. the app lets you choose between six land models. shap, a leave-features-out check and the stack weights are in `notebooks/land_models.ipynb`.
+all the tree models beat the baselines clearly, but they are very close to each other and the stack is only about 0.001 better than xgboost, which is inside the noise. a typical miss is still around 32%, because the ads say little about the plot itself. the app lets you choose between six land models. shap, a leave-features-out check and the stack weights are in `notebooks/land_modelling.ipynb`.
 
 ## models
 
@@ -89,13 +89,13 @@ all models predict the log of the price and are scored on a 20% test set. the ap
 ```
 data/raw         kagglehub downloads (not tracked)
 data/processed   cleaned houses, cleaned land and location coordinates
-notebooks/       house eda and modelling, land eda and models, location coordinates
+notebooks/       house eda and modelling, land eda and modelling, location coordinates
 model/           pickled pipelines, held out samples, app metadata
 estimators.py    lightgbm and catboost wrappers needed to unpickle the land model
 frontend/        streamlit app (perch) with a houses and a land page, and its spec
 ```
 
-notebooks run in order: `eda`, `modelling`, `locations`, `land_eda`, `land_models`.
+notebooks run in order: `houses_eda`, `houses_modelling`, `locations`, `land_eda`, `land_modelling`.
 
 ## setup
 
@@ -119,4 +119,4 @@ streamlit run frontend/app.py
 - 7 months of ads, so the timeline says nothing about long term trends
 - colombo and gampaha make up most of the data, small districts have large errors
 - the land model is about a third off on a typical plot, so treat it as a rough guide
-- `model/land_model.pkl` is about 52 MB
+- `model/land_stacking.pkl` is about 52 MB
