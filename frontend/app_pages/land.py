@@ -1,5 +1,4 @@
 import pickle
-import time
 
 import numpy as np
 import pandas as pd
@@ -378,7 +377,7 @@ with tab_compare:
                'mae is in Rs thousand per perch. All scored on the same 20% of ads kept aside.')
 
 # =====================================================================
-# tab 3: price map with timeline
+# tab 3: price map
 # =====================================================================
 with tab_map:
     with st.container(key='card_controls'):
@@ -388,26 +387,17 @@ with tab_map:
         style = b.selectbox('Map style', ['3D columns', 'Heatmap', 'Bubbles'], key='land_style')
         use_filter = c.selectbox('Land use', ['All', 'Residential', 'Commercial', 'Agricultural'], key='land_use_filter')
         sizes_range = d2.select_slider('Plot size (perches)', options=[1, 5, 10, 15, 25, 50, 100, 200], value=(1, 200), key='land_sizes')
-        d, e = st.columns([5, 1])
-        month_label = d.select_slider('Timeline', options=['All months'] + TIMELINE_LABELS, key='land_timeline')
-        e.write('')
-        play = e.button('Play', key='land_play')
 
     data = land[land['land_size_perches'].between(*sizes_range)]
     if use_filter != 'All':
         data = data[data[use_filter.lower()] == 1]
     value_col = {'Median price per perch': 'median_price', 'Median total price': 'median_total', 'Number of ads': 'ads'}[metric]
 
-    def draw(label, slot):
-        if label == 'All months':
-            part = data
-        else:
-            y, m = TIMELINE[TIMELINE_LABELS.index(label)]
-            part = data[data['posted_month'] == m]
-        stats = area_stats(part)
-        stats = stats[stats['ads'] >= (3 if label != 'All months' else 5)].copy()
+    def draw():
+        stats = area_stats(data)
+        stats = stats[stats['ads'] >= 5].copy()
         if stats.empty:
-            slot.info('No areas have enough ads for this filter.')
+            st.info('No areas have enough ads for this filter.')
             return stats
         stats['colour'] = colour_scale(stats[value_col].values)
         stats['elevation'] = np.minimum(stats[value_col] / np.percentile(stats[value_col], 95), 1.2) * 40000
@@ -415,34 +405,35 @@ with tab_map:
         stats['value'] = stats[value_col]
 
         if style == '3D columns':
-            layer = pdk.Layer('ColumnLayer', data=stats, get_position='[longitude, latitude]', get_elevation='elevation',
+            layer = pdk.Layer('ColumnLayer', id='price_layer', data=stats, get_position='[longitude, latitude]', get_elevation='elevation',
                               radius=1800, get_fill_color='colour', pickable=True, extruded=True, auto_highlight=True)
             view = pdk.ViewState(latitude=7.2, longitude=80.2, zoom=8.2, pitch=55, bearing=-15)
         elif style == 'Heatmap':
-            layer = pdk.Layer('HeatmapLayer', data=stats, get_position='[longitude, latitude]', get_weight='value',
+            layer = pdk.Layer('HeatmapLayer', id='price_layer', data=stats, get_position='[longitude, latitude]', get_weight='value',
                               aggregation='"MEAN"', radius_pixels=55, opacity=.85,
                               color_range=[[207, 229, 223], [140, 199, 180], [242, 184, 75], [226, 120, 50], [158, 40, 40], [90, 10, 30]])
             view = pdk.ViewState(latitude=7.4, longitude=80.5, zoom=7.3)
         else:
-            layer = pdk.Layer('ScatterplotLayer', data=stats, get_position='[longitude, latitude]', get_radius='radius',
+            layer = pdk.Layer('ScatterplotLayer', id='price_layer', data=stats, get_position='[longitude, latitude]', get_radius='radius',
                               radius_min_pixels=5, radius_max_pixels=40, get_fill_color='colour', pickable=True,
                               stroked=True, get_line_color=[255, 255, 255], line_width_min_pixels=1)
             view = pdk.ViewState(latitude=7.4, longitude=80.5, zoom=7.3)
 
-        slot.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view, map_style='light', tooltip=TOOLTIP), height=520,
-                          alt=f'Map of Sri Lanka showing {metric.lower()} by area as {style.lower()}, for {label.lower()}. The table below lists the same areas.')
+        # selection is on so the key counts, a new key makes the map start again from the default view
+        st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view, map_style='light', tooltip=TOOLTIP), height=520,
+                        on_select='rerun', key=f'land_price_map_{style}_{st.session_state.land_map_resets}',
+                        alt=f'Map of Sri Lanka showing {metric.lower()} by area as {style.lower()}, for all months. The table below lists the same areas.')
         return stats
 
-    st.write('')
-    map_slot = st.empty()
-    if play:
-        for label in TIMELINE_LABELS:
-            map_slot.caption(f'Showing {label}')
-            shown = draw(label, st.empty())
-            time.sleep(1.2)
-        shown = draw(TIMELINE_LABELS[-1], map_slot)
-    else:
-        shown = draw(month_label, map_slot)
+    if 'land_map_resets' not in st.session_state:
+        st.session_state.land_map_resets = 0
+
+    def reset_map():
+        st.session_state.land_map_resets += 1
+
+    _, right = st.columns([5, 1])
+    right.button('Reset view', key='land_reset_map', on_click=reset_map, use_container_width=True)
+    shown = draw()
 
     if len(shown):
         solid = shown[shown['ads'] >= 15]

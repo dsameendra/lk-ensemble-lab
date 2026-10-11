@@ -10,7 +10,7 @@ perch is a streamlit app with two pages, houses and land. each page has four tab
 
 - **estimate a price**: pick the district and city from the lists or click a dot on the map, describe the house or plot, choose one of the models and get a price with a likely range, where it sits among the listings in that district, and a what-if chart for other areas and sizes. a button loads a real listing the model never saw and shows how far off the estimate is
 - **compare models**: the same house or plot priced by every model side by side, the test scores of all models and baselines, and a card for each model with how it works, what it is good at and what to watch out for
-- **price map**: 3d columns, heatmap or bubbles of median prices by area, filters, a timeline with play, and the most and least expensive areas
+- **price map**: 3d columns, heatmap or bubbles of median prices by area, filters, a reset view button, and the most and least expensive areas
 - **about the model**: how the estimate is made, what drives the price and, for land, the leave-features-out check and the stack weights
 
 <table>

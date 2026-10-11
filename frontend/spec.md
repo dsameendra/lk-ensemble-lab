@@ -27,7 +27,7 @@ streamlit app with two pages, houses and land. it loads the trained pipelines in
    - typical miss of every model and baseline, full score table
    - a card per model: how it works, good at, watch out, its scores
 3. **price map**
-   - metric, map style (3d columns, heatmap, bubbles), filters, timeline slider (oct 2022 to mar 2023) with a play button
+   - metric, map style (3d columns, heatmap, bubbles), filters, a reset view button, all months combined
    - kpis, median price by month for chosen districts, top and bottom areas
 4. **about the model**
    - how the estimate is made, feature importance, caveats
@@ -43,7 +43,7 @@ streamlit app with two pages, houses and land. it loads the trained pipelines in
 - voting is the mean of the tree models on the log price, computed from the base models inside the saved stack
 - area options only include places with enough ads for the model
 - clicking a map dot sets the district and city in the form, changing the district resets the city
-- months with too few ads are left out of the timeline
+- months with too few ads are left out of the trend chart
 - soft warnings for unusual input, the estimate still shows
 
 ## look
