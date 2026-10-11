@@ -1,0 +1,14 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: streamlit
+      url: https://purch-lk.streamlit.app/
+    steps:
+      - run: curl -sf https://purch-lk.streamlit.app/ > /dev/null
