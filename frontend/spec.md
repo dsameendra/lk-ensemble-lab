@@ -22,6 +22,7 @@ streamlit app with two pages, houses and land. it loads the trained pipelines in
      (estimate times and divided by exp(test rmsle), about 68% of ads), position against the district, small tiles
    - extras from the model: the same house or plot in other busy areas, price as size grows
    - button to load a real listing the model never saw and compare with its real price
+   - why this estimate: the biggest pushes up and down for the house or plot as bars in percent, from the xgboost contributions (same chart on both pages, labelled as xgboost even when another model is chosen)
 2. **compare models**
    - the same house or plot priced by every model, with how far apart they are
    - typical miss of every model and baseline, full score table
@@ -58,3 +59,5 @@ streamlit app with two pages, houses and land. it loads the trained pipelines in
 - [x] held out listings give the same prediction as the notebooks (houses and land)
 - [x] checked on a phone width, no sideways scroll
 - [x] months on the trend chart are in time order
+- [ ] the xgboost base value plus the contributions equals its raw output for the same row
+- [ ] why-this-estimate bars change when a field changes

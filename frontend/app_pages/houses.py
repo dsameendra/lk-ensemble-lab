@@ -7,7 +7,7 @@ import pydeck as pdk
 import streamlit as st
 
 from shared import (ROOT, MONTHS, TIMELINE, TIMELINE_LABELS, GREEN, SAFFRON, TOOLTIP_STYLE,
-                    colour_scale, hero, inject_css, load_json, model_bars, model_card, month_chart, short)
+                    colour_scale, explain, hero, inject_css, load_json, model_bars, model_card, month_chart, short, why_chart)
 
 inject_css()
 
@@ -45,6 +45,11 @@ MODELS = {
     'Random forest': ('random_forest', 'Many deep trees averaged. Steady, slightly less accurate.'),
     'Voting': ('voting', 'Plain average of the random forest and xgboost.'),
 }
+
+
+HOUSE_LABELS = {'bedrooms': 'Bedrooms', 'bathrooms': 'Bathrooms', 'house_size_sqft': 'House size', 'land_size_perches': 'Land size',
+                'posted_month': 'Month posted', 'is_verified': 'Verified seller', 'is_member': 'Member', 'location': 'City',
+                'district': 'District', 'membership_level': 'Membership level'}
 
 
 def predict(frame, choice):
@@ -286,6 +291,13 @@ with tab_est:
                             alt='Map of Sri Lanka with a dot for every area that has house ads. Bigger dots have more ads and darker dots have higher median prices. The district and city lists make the same choice.')
 
     extras = st.container()
+    with extras:
+        st.subheader('Why this estimate')
+        effects = explain(load_model('xgboost'), pd.DataFrame([make_row()]), ['location', 'district', 'membership_level'])
+        why_chart(effects, HOUSE_LABELS, 'Bar chart of how much each detail of this house raises or lowers the xgboost estimate, as a percent of the price.')
+        st.caption('How xgboost reads this house. Each bar is how much that detail moves the price away from the average ad. '
+                   'The other models can differ a little.')
+
     with extras:
         # the same house in other busy areas
         busy = (houses.groupby(['location', 'district']).size().rename('ads').reset_index()

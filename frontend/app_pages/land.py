@@ -6,7 +6,7 @@ import pydeck as pdk
 import streamlit as st
 
 from shared import (ROOT, TIMELINE, TIMELINE_LABELS, GREEN, SAFFRON, TOOLTIP_STYLE,
-                    colour_scale, hero, inject_css, load_json, model_bars, model_card, month_chart, short)
+                    colour_scale, explain, hero, inject_css, load_json, model_bars, model_card, month_chart, short, why_chart)
 
 inject_css()
 
@@ -21,6 +21,9 @@ MODELS = {
 }
 RESULT_ROW = {'stacking': 'stacking (trees + ridge + knn)', 'xgboost': 'xgboost (tuned)', 'lightgbm': 'lightgbm (tuned)',
               'catboost': 'catboost (tuned)', 'random forest': 'random forest (tuned)', 'voting': 'voting (4 trees)'}
+LAND_LABELS = {'land_size_perches': 'Plot size', 'latitude': 'Latitude', 'longitude': 'Longitude', 'is_verified': 'Verified seller',
+               'is_member': 'Member', 'residential': 'Residential', 'commercial': 'Commercial', 'agricultural': 'Agricultural',
+               'location': 'City', 'district': 'District', 'membership_level': 'Membership level'}
 BASE_NAME = {'xgboost': 'xgb', 'lightgbm': 'lgbm', 'catboost': 'cat', 'random forest': 'rf'}
 WORDS = {'main_road': 'Main road', 'highway': 'Near highway', 'clear_deed': 'Clear deed', 'near_town': 'Near town',
          'bare_land': 'Bare land', 'water': 'Water', 'electricity': 'Electricity', 'lake_or_beach': 'Lake or beach',
@@ -268,6 +271,13 @@ with tab_est:
                             alt='Map of Sri Lanka with a dot for every area that has land ads. Bigger dots have more ads and darker dots have higher median prices per perch. The district and city lists make the same choice.')
 
     extras = st.container()
+    with extras:
+        st.subheader('Why this estimate')
+        effects = explain(model.regressor_.named_estimators_['xgb'], pd.DataFrame([make_row()]), ['location', 'district', 'membership_level'])
+        why_chart(effects, {**LAND_LABELS, **WORDS}, 'Bar chart of how much each detail of this plot raises or lowers the xgboost price per perch, as a percent of the price.')
+        st.caption('How xgboost reads this plot. Each bar is how much that detail moves the price away from the average ad. '
+                   'The other models can differ a little.')
+
     st.markdown(f'<div class="price-bar"><span>Price per perch</span><b>{rs(price)}</b></div>', unsafe_allow_html=True)
     with extras:
         busy = (land.groupby(['location', 'district']).size().rename('ads').reset_index()

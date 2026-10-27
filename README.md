@@ -8,7 +8,7 @@ ensemble learning lab work on a sri lankan dataset. part 1 compares random fores
 
 perch is a streamlit app with two pages, houses and land. each page has four tabs:
 
-- **estimate a price**: pick the district and city from the lists or click a dot on the map, describe the house or plot, choose one of the models and get a price with a likely range, where it sits among the listings in that district, and a what-if chart for other areas and sizes. a button loads a real listing the model never saw and shows how far off the estimate is
+- **estimate a price**: pick the district and city from the lists or click a dot on the map, describe the house or plot, choose one of the models and get a price with a likely range, where it sits among the listings in that district, and a what-if chart for other areas and sizes. a button loads a real listing the model never saw and shows how far off the estimate is, and a chart shows which details push the price up or down
 - **compare models**: the same house or plot priced by every model side by side, the test scores of all models and baselines, and a card for each model with how it works, what it is good at and what to watch out for
 - **price map**: 3d columns, heatmap or bubbles of median prices by area, filters, a reset view button, and the most and least expensive areas
 - **about the model**: how the estimate is made, what drives the price and, for land, the leave-features-out check and the stack weights
@@ -46,6 +46,7 @@ part 2: predict the asking price per perch (rs) of a plot of land from its size,
 - about 70% of land ads are reposts (same price, size and location), so they are removed before splitting to avoid leakage
 - land prices come in different units, so everything is converted to rs per perch (per acre is divided by 160)
 - location coordinates for the map are looked up with openstreetmap nominatim
+- the dataset is under the odc attribution licence (odc-by). the cleaned files keep no names, phone numbers, titles, descriptions or seller ids
 
 ## results: houses
 
@@ -126,4 +127,5 @@ streamlit run frontend/app.py
 - 7 months of ads, so the timeline says nothing about long term trends
 - colombo and gampaha make up most of the data, small districts have large errors
 - the land model is about a third off on a typical plot, so treat it as a rough guide
+- the models are not for valuation, lending or taxes. asking prices are not sale prices, and cheap areas with few ads get the weakest estimates
 - `model/land_stacking.pkl` is about 52 MB
