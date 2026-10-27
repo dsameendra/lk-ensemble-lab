@@ -7,7 +7,7 @@ import pydeck as pdk
 import streamlit as st
 
 from shared import (ROOT, MONTHS, TIMELINE, TIMELINE_LABELS, GREEN, SAFFRON, TOOLTIP_STYLE,
-                    colour_scale, explain, hero, inject_css, load_json, model_bars, model_card, month_chart, short, why_chart)
+                    colour_scale, ebm_effects, hero, inject_css, load_json, model_bars, model_card, month_chart, short, why_chart)
 
 inject_css()
 
@@ -37,13 +37,14 @@ except FileNotFoundError:
     st.stop()
 
 
-RESULT_ROW = {'stacking': 'stacking (rf + xgb)', 'xgboost': 'xgboost (tuned)', 'random_forest': 'random forest (tuned)', 'voting': 'voting (rf + xgb)'}
+RESULT_ROW = {'stacking': 'stacking (rf + xgb)', 'xgboost': 'xgboost (tuned)', 'random_forest': 'random forest (tuned)', 'voting': 'voting (rf + xgb)', 'ebm': 'ebm (tuned)'}
 
 MODELS = {
     'Stacking': ('stacking', 'Learns how much to trust the forest and xgboost. Lowest error in the tests.'),
     'XGBoost': ('xgboost', 'Boosted trees that fix each other\'s mistakes. Best single model.'),
     'Random forest': ('random_forest', 'Many deep trees averaged. Steady, slightly less accurate.'),
     'Voting': ('voting', 'Plain average of the random forest and xgboost.'),
+    'Explainable boosting': ('ebm', 'One curve per feature plus a few pairs, so every estimate can be explained exactly.'),
 }
 
 
@@ -135,9 +136,9 @@ def map_clicked():
 
 # ---------- header ----------
 hero('What is a house worth, anywhere in Sri Lanka?',
-     'Pick an area, describe the house and get an asking price estimate. Compare four models on the same house, '
+     'Pick an area, describe the house and get an asking price estimate. Compare five models on the same house, '
      'or explore how prices differ from town to town and how they moved over the months.',
-     [f'{len(houses):,} house ads', '4 models', 'Sep 2022 to Apr 2023'], current='houses')
+     [f'{len(houses):,} house ads', '5 models', 'Sep 2022 to Apr 2023'], current='houses')
 
 tab_est, tab_compare, tab_map, tab_about = st.tabs(['Estimate a price', 'Compare models', 'Price map', 'About the model'])
 
@@ -188,7 +189,7 @@ with tab_est:
                 month = c10.selectbox('Posted in', MONTH_OPTIONS, key='month', on_change=reset_flag)
 
             model_label = st.segmented_control('Model', list(MODELS), default='Stacking', key='model_choice',
-                                               help='All four were trained on the same ads and scored on the same test set.')
+                                               help='All five were trained on the same ads and scored on the same test set.')
             if model_label is None:
                 model_label = 'Stacking'
             model_name, model_note = MODELS[model_label]
@@ -293,10 +294,10 @@ with tab_est:
     extras = st.container()
     with extras:
         st.subheader('Why this estimate')
-        effects = explain(load_model('xgboost'), pd.DataFrame([make_row()]), ['location', 'district', 'membership_level'])
-        why_chart(effects, HOUSE_LABELS, 'Bar chart of how much each detail of this house raises or lowers the xgboost estimate, as a percent of the price.')
-        st.caption('How xgboost reads this house. Each bar is how much that detail moves the price away from the average ad. '
-                   'The other models can differ a little.')
+        effects = ebm_effects(load_model('ebm'), pd.DataFrame([make_row()]))
+        why_chart(effects, HOUSE_LABELS, 'Bar chart of how much each detail of this house raises or lowers the explainable boosting estimate, as a percent of the price.')
+        st.caption('How the explainable boosting model reads this house. Each bar is exact: it is how much that detail, or a pair of details, '
+                   'moves the price away from the average ad. The other models can differ a little.')
 
     with extras:
         # the same house in other busy areas
@@ -327,12 +328,12 @@ with tab_est:
 # tab 2: all models side by side
 # =====================================================================
 with tab_compare:
-    st.subheader('The same house, four models')
+    st.subheader('The same house, five models')
     frame = pd.DataFrame([make_row()])
     estimates = {lab: float(predict(frame, MODELS[lab][0])[0]) for lab in MODELS}
     mid = float(np.median(list(estimates.values())))
     gap = (max(estimates.values()) - min(estimates.values())) / mid * 100
-    st.markdown(f'<div class="verdict">For the house set on the first tab, the four models are within <b>{gap:.0f}%</b> '
+    st.markdown(f'<div class="verdict">For the house set on the first tab, the five models are within <b>{gap:.0f}%</b> '
                 f'of each other. The model you picked there is the dark bar.</div>', unsafe_allow_html=True)
     st.write('')
     with st.container(key='card_models'):
@@ -347,6 +348,7 @@ with tab_compare:
     st.subheader('What each model is')
     rf_p = {k.split('__')[-1]: v for k, v in meta['best_params']['random forest'].items()}
     xgb_p = {k.split('__')[-1]: v for k, v in meta['best_params']['xgboost'].items()}
+    ebm_p = {k.split('__')[-1]: v for k, v in meta['best_params']['ebm'].items()}
     INFO = {
         'Stacking': ('stacking (rf + xgb)',
                      'Takes the predictions of the random forest and xgboost, then a simple linear model learns how much to trust each.',
@@ -366,6 +368,11 @@ with tab_compare:
                    'A plain average of the random forest and xgboost, no learning on top.',
                    'Simple, and it smooths out one model having a bad guess.',
                    'Treats both models as equally good.', []),
+        'Explainable boosting': ('ebm (tuned)',
+                                 'Learns one curve for each detail of the house and a few curves for pairs, and adds them up. Nothing is hidden inside deep trees.',
+                                 'Every estimate can be explained exactly, and the saved model is only a few MB.',
+                                 'About as accurate as the random forest and a little behind xgboost, with a larger typical miss.',
+                                 [('pairs', ebm_p['interactions']), ('max bins', ebm_p['max_bins']), ('learning rate', ebm_p['learning_rate'])]),
     }
     names = list(INFO)
     for row in range(0, len(names), 2):
@@ -382,7 +389,7 @@ with tab_compare:
     best = results['rmsle'].idxmin()
     st.markdown(f'<div class="verdict">Lowest error is <b>{best}</b> at {results["rmsle"].min():.3f} rmsle. '
                 'Xgboost beats the random forest, and voting and stacking only add a little on top, '
-                'so the choice of model matters less than the features.</div>', unsafe_allow_html=True)
+                'so the choice of model matters less than the features. The explainable boosting model gives up a little accuracy for estimates that can be explained exactly.</div>', unsafe_allow_html=True)
     st.write('')
     st.caption('rmsle is the typical miss on the log price, lower is better. r2 is how much of the price spread the model explains. '
                'mae is the average miss in Rs million. All scored on the same 20% of ads kept aside.')

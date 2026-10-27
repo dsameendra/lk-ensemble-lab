@@ -2,13 +2,13 @@
 
 lk-ensemble-lab: property price prediction for sri lanka with tree ensembles.
 
-ensemble learning lab work on a sri lankan dataset. part 1 compares random forest and xgboost for predicting house prices, adds a voting and a stacking model and runs inference on one held out listing. part 2 takes a second case from the same ads, land price per perch, and adds lightgbm, catboost, a bigger stack and a comparison with simple baselines. both are served through a small web app called perch.
+ensemble learning lab work on a sri lankan dataset. part 1 compares random forest and xgboost for predicting house prices, adds a voting and a stacking model and an explainable boosting machine (ebm), and runs inference on one held out listing. part 2 takes a second case from the same ads, land price per perch, and adds lightgbm, catboost, a bigger stack and a comparison with simple baselines. both are served through a small web app called perch.
 
 ## the app
 
 perch is a streamlit app with two pages, houses and land. each page has four tabs:
 
-- **estimate a price**: pick the district and city from the lists or click a dot on the map, describe the house or plot, choose one of the models and get a price with a likely range, where it sits among the listings in that district, and a what-if chart for other areas and sizes. a button loads a real listing the model never saw and shows how far off the estimate is, and a chart shows which details push the price up or down
+- **estimate a price**: pick the district and city from the lists or click a dot on the map, describe the house or plot, choose one of the models and get a price with a likely range, where it sits among the listings in that district, and a what-if chart for other areas and sizes. a button loads a real listing the model never saw and shows how far off the estimate is, and a chart shows which details push the price up or down, exactly, from the ebm
 - **compare models**: the same house or plot priced by every model side by side, the test scores of all models and baselines, and a card for each model with how it works, what it is good at and what to watch out for
 - **price map**: 3d columns, heatmap or bubbles of median prices by area, filters, a reset view button, and the most and least expensive areas
 - **about the model**: how the estimate is made, what drives the price and, for land, the leave-features-out check and the stack weights
@@ -60,8 +60,9 @@ scored on a 20% test set (rmsle on log price, lower is better):
 | xgboost (tuned) | 0.377 | 0.797 | 17.7% |
 | voting (rf + xgb) | 0.378 | 0.796 | 17.3% |
 | stacking (rf + xgb) | 0.376 | 0.798 | 17.5% |
+| ebm (tuned) | 0.390 | 0.783 | 19.9% |
 
-xgboost beats the random forest, and voting and stacking add very little on top. the app lets you choose between stacking (default), xgboost, random forest and voting. details, strengths, limitations and interpretation are in `notebooks/houses_modelling.ipynb`.
+xgboost beats the random forest, and voting and stacking add very little on top. the ebm is about as good as the random forest and a bit behind xgboost, but every estimate can be explained exactly and its pickle is 2 MB. the app lets you choose between stacking (default), xgboost, random forest, voting and the ebm. details, strengths, limitations and interpretation are in `notebooks/houses_modelling.ipynb`.
 
 ## results: land
 
@@ -79,14 +80,15 @@ scored on a 20% test set (rmsle on log price per perch, lower is better):
 | catboost (tuned) | 0.778 | 0.644 | 33.1% |
 | voting (4 trees) | 0.770 | 0.651 | 32.1% |
 | stacking (trees + ridge + knn) | 0.769 | 0.652 | 31.8% |
+| ebm (tuned) | 0.796 | 0.626 | 35.2% |
 
-all the tree models beat the baselines clearly, but they are very close to each other and the stack is only about 0.001 better than xgboost, which is inside the noise. a typical miss is still around 32%, because the ads say little about the plot itself. the app lets you choose between six land models. shap, a leave-features-out check and the stack weights are in `notebooks/land_modelling.ipynb`.
+all the tree models beat the baselines clearly, but they are very close to each other and the stack is only about 0.001 better than xgboost, which is inside the noise. a typical miss is still around 32%, because the ads say little about the plot itself. the ebm is behind the trees on land, about 0.02 to 0.03 rmsle, and still ahead of the baselines. the app lets you choose between seven land models. shap, a leave-features-out check and the stack weights are in `notebooks/land_modelling.ipynb`.
 
 ## models
 
-houses (part 1): random forest, xgboost, voting (average of the two) and stacking (a linear model on top of the two). random forest and xgboost are tuned with a randomized search.
+houses (part 1): random forest, xgboost, voting (average of the two) and stacking (a linear model on top of the two), plus an ebm. random forest, xgboost and the ebm are tuned with a randomized search.
 
-land (part 2): random forest, xgboost, lightgbm and catboost, each tuned, plus voting over the four and two stacks. the final stack adds ridge and a nearest neighbour model on the map, and a non negative linear model learns the weights. the four simple baselines (district median, location median, ridge, knn) show what the trees have to beat.
+land (part 2): random forest, xgboost, lightgbm and catboost, each tuned, plus voting over the four, two stacks and an ebm. the final stack adds ridge and a nearest neighbour model on the map, and a non negative linear model learns the weights. the four simple baselines (district median, location median, ridge, knn) show what the trees have to beat.
 
 all models predict the log of the price and are scored on a 20% test set. the app reads the saved pipelines in `model/`, so preprocessing is part of each pickle.
 
@@ -96,7 +98,7 @@ all models predict the log of the price and are scored on a 20% test set. the ap
 data/raw         kagglehub downloads (not tracked)
 data/processed   cleaned houses, cleaned land and location coordinates
 notebooks/       house eda and modelling, land eda and modelling, location coordinates
-model/           pickled pipelines, held out samples, app metadata
+model/           pickled pipelines (including the ebm), held out samples, app metadata
 estimators.py    lightgbm and catboost wrappers needed to unpickle the land model
 frontend/        streamlit app (perch) with a houses and a land page, and its spec
 .github/         deployment workflow

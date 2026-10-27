@@ -6,7 +6,6 @@ import altair as alt
 import numpy as np
 import pandas as pd
 import streamlit as st
-import xgboost as xgb
 
 ROOT = Path(__file__).resolve().parent.parent
 # the saved land model uses the wrappers in estimators.py
@@ -180,33 +179,24 @@ def month_chart(frame, unit, description):
     st.altair_chart(chart, width='stretch', alt=description)
 
 
-def explain(pipe, row, cat_cols):
-    # xgboost contributions for one row on the log scale, the one hot columns of a feature are added back together
-    prep = pipe.named_steps['prep']
-    model = pipe.named_steps['model']
-    booster = getattr(model, 'regressor_', model).get_booster()
-    contribs = booster.predict(xgb.DMatrix(prep.transform(row)), pred_contribs=True)[0]
-    effects = {}
-    for name, value in zip(prep.get_feature_names_out(), contribs[:-1]):
-        kind, rest = name.split('__', 1)
-        if kind == 'cat':
-            rest = next(c for c in cat_cols if rest.startswith(c + '_'))
-        effects[rest] = effects.get(rest, 0) + value
-    return pd.Series(effects)
+def ebm_effects(pipe, row):
+    # contribution of every term of the explainable boosting model to the log price, exact and additive
+    ebm = pipe.named_steps['model'].regressor_
+    return pd.Series(ebm.eval_terms(row)[0], index=ebm.term_names_)
 
 
 def why_chart(effects, labels, description):
     # biggest pushes first, as a percent of the price: green raises it, saffron lowers it
     top = effects.reindex(effects.abs().sort_values(ascending=False).index)[:8]
-    data = pd.DataFrame({'feature': [labels.get(k, k) for k in top.index], 'effect': (np.exp(top.values) - 1) * 100})
+    data = pd.DataFrame({'feature': [' x '.join(labels.get(part, part) for part in k.split(' & ')) for k in top.index], 'effect': (np.exp(top.values) - 1) * 100})
     data['direction'] = np.where(data['effect'] >= 0, 'raises the price', 'lowers the price')
     chart = alt.Chart(data).mark_bar().encode(
-        y=alt.Y('feature:N', sort=None, title=None),
+        y=alt.Y('feature:N', sort=None, title=None, axis=alt.Axis(labelOverlap=False, labelLimit=260)),
         x=alt.X('effect:Q', title='effect on the price (%)'),
         color=alt.Color('direction:N', title=None, scale=alt.Scale(domain=['raises the price', 'lowers the price'], range=[GREEN, SAFFRON]),
                         legend=alt.Legend(orient='bottom')),
         tooltip=['feature', alt.Tooltip('effect:Q', format='+.1f')],
-    ).properties(height=280)
+    ).properties(height=34 * len(data))
     st.altair_chart(chart, width='stretch', alt=description)
 
 

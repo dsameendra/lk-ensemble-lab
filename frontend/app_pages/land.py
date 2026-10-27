@@ -6,7 +6,7 @@ import pydeck as pdk
 import streamlit as st
 
 from shared import (ROOT, TIMELINE, TIMELINE_LABELS, GREEN, SAFFRON, TOOLTIP_STYLE,
-                    colour_scale, explain, hero, inject_css, load_json, model_bars, model_card, month_chart, short, why_chart)
+                    colour_scale, ebm_effects, hero, inject_css, load_json, model_bars, model_card, month_chart, short, why_chart)
 
 inject_css()
 
@@ -18,9 +18,11 @@ MODELS = {
     'CatBoost': ('catboost', 'Boosted trees with built in handling of categories.'),
     'Random forest': ('random forest', 'Many deep trees averaged.'),
     'Voting': ('voting', 'Plain average of the four tree models.'),
+    'Explainable boosting': ('ebm', 'One curve per feature plus a few pairs, so every estimate can be explained exactly.'),
 }
 RESULT_ROW = {'stacking': 'stacking (trees + ridge + knn)', 'xgboost': 'xgboost (tuned)', 'lightgbm': 'lightgbm (tuned)',
-              'catboost': 'catboost (tuned)', 'random forest': 'random forest (tuned)', 'voting': 'voting (4 trees)'}
+              'catboost': 'catboost (tuned)', 'random forest': 'random forest (tuned)', 'voting': 'voting (4 trees)',
+              'ebm': 'ebm (tuned)'}
 LAND_LABELS = {'land_size_perches': 'Plot size', 'latitude': 'Latitude', 'longitude': 'Longitude', 'is_verified': 'Verified seller',
                'is_member': 'Member', 'residential': 'Residential', 'commercial': 'Commercial', 'agricultural': 'Agricultural',
                'location': 'City', 'district': 'District', 'membership_level': 'Membership level'}
@@ -35,6 +37,12 @@ USES = ['Residential', 'Commercial', 'Agricultural']
 @st.cache_resource
 def load_model():
     with open(ROOT / 'model' / 'land_stacking.pkl', 'rb') as f:
+        return pickle.load(f)
+
+
+@st.cache_resource
+def load_ebm():
+    with open(ROOT / 'model' / 'land_ebm.pkl', 'rb') as f:
         return pickle.load(f)
 
 
@@ -59,6 +67,8 @@ def predict(frame, choice):
     # the saved stack holds every base model, they all predict log price
     if choice == 'stacking':
         return model.predict(frame)
+    if choice == 'ebm':
+        return load_ebm().predict(frame)
     logs = {n: est.predict(frame) for n, est in model.regressor_.named_estimators_.items()}
     if choice == 'voting':
         return np.exp(np.mean([logs[n] for n in TREES], axis=0))
@@ -130,8 +140,8 @@ def map_clicked():
 # ---------- header ----------
 hero('What is a plot of land worth, per perch?',
      'Pick an area, say how big the plot is and what the ad says about it. Perch gives a price per perch and a total, '
-     'and shows how six models and four simple baselines compare on it.',
-     [f'{len(land):,} land ads', '6 models', 'Sep 2022 to Apr 2023'], current='land')
+     'and shows how seven models and four simple baselines compare on it.',
+     [f'{len(land):,} land ads', '7 models', 'Sep 2022 to Apr 2023'], current='land')
 
 tab_est, tab_compare, tab_map, tab_about = st.tabs(['Estimate a price', 'Compare models', 'Price map', 'About the model'])
 
@@ -173,7 +183,7 @@ with tab_est:
                 is_verified = c3.selectbox('Verified', ['No', 'Yes'], key='land_verified', on_change=reset_flag)
 
             label = st.segmented_control('Model', list(MODELS), default='Stacking', key='land_model_choice',
-                                         help='All six come from the same training data and are scored on the same test set.')
+                                         help='All seven come from the same training data and are scored on the same test set.')
             label = label or 'Stacking'
             model_name, model_note = MODELS[label]
             st.caption(f'{model_note} Test error {meta["test_rmsle"][model_name]:.3f} rmsle.')
@@ -273,10 +283,10 @@ with tab_est:
     extras = st.container()
     with extras:
         st.subheader('Why this estimate')
-        effects = explain(model.regressor_.named_estimators_['xgb'], pd.DataFrame([make_row()]), ['location', 'district', 'membership_level'])
-        why_chart(effects, {**LAND_LABELS, **WORDS}, 'Bar chart of how much each detail of this plot raises or lowers the xgboost price per perch, as a percent of the price.')
-        st.caption('How xgboost reads this plot. Each bar is how much that detail moves the price away from the average ad. '
-                   'The other models can differ a little.')
+        effects = ebm_effects(load_ebm(), pd.DataFrame([make_row()]))
+        why_chart(effects, {**LAND_LABELS, **WORDS}, 'Bar chart of how much each detail of this plot raises or lowers the explainable boosting price per perch, as a percent of the price.')
+        st.caption('How the explainable boosting model reads this plot. Each bar is exact: it is how much that detail, or a pair of details, '
+                   'moves the price away from the average ad. The other models can differ a little.')
 
     st.markdown(f'<div class="price-bar"><span>Price per perch</span><b>{rs(price)}</b></div>', unsafe_allow_html=True)
     with extras:
@@ -304,12 +314,12 @@ with tab_est:
 # tab 2: all models side by side
 # =====================================================================
 with tab_compare:
-    st.subheader('The same plot, six models')
+    st.subheader('The same plot, seven models')
     frame = pd.DataFrame([make_row()])
     estimates = {lab: float(predict(frame, MODELS[lab][0])[0]) for lab in MODELS}
     mid = float(np.median(list(estimates.values())))
     gap = (max(estimates.values()) - min(estimates.values())) / mid * 100
-    st.markdown(f'<div class="verdict">For the plot set on the first tab, the six models are within <b>{gap:.0f}%</b> '
+    st.markdown(f'<div class="verdict">For the plot set on the first tab, the seven models are within <b>{gap:.0f}%</b> '
                 f'of each other. The model you picked there is the dark bar.</div>', unsafe_allow_html=True)
     st.write('')
     with st.container(key='card_models'):
@@ -320,6 +330,7 @@ with tab_compare:
     kind = pd.Series('single tree model', index=results.index)
     kind[results.index.str.startswith(('district', 'location', 'ridge', 'knn'))] = 'simple baseline'
     kind[results.index.str.startswith(('voting', 'stacking'))] = 'ensemble'
+    kind[results.index.str.startswith('ebm')] = 'explainable model'
     ranked = results[~results.index.str.contains('default|stacking \\(4')].sort_values('median abs % error', ascending=False)
 
     st.subheader('How they scored on ads they never saw')
@@ -359,8 +370,12 @@ with tab_compare:
                    'A plain average of the four tree models, no learning on top.',
                    'Simple, and smooths out the odd bad guess from one model.',
                    'Treats all four as equally good, which the stack weights show they are not.'),
+        'Explainable boosting': ('ebm (tuned)',
+                                 'Learns one curve for each detail of the plot and a few curves for pairs, and adds them up. Nothing is hidden inside deep trees.',
+                                 'Every estimate can be explained exactly, and the saved model is only a few MB.',
+                                 'About 0.02 to 0.03 rmsle behind the tree models on land, with a typical miss near 35%.'),
     }
-    weight_of = {'Stacking': None, 'XGBoost': 'xgb', 'LightGBM': 'lgbm', 'CatBoost': 'cat', 'Random forest': 'rf', 'Voting': None}
+    weight_of = {'Stacking': None, 'XGBoost': 'xgb', 'LightGBM': 'lgbm', 'CatBoost': 'cat', 'Random forest': 'rf', 'Voting': None, 'Explainable boosting': None}
     names = list(INFO)
     for row in range(0, len(names), 2):
         cols = st.columns(2, gap='large')
@@ -375,12 +390,12 @@ with tab_compare:
         st.write('')
 
     base = results.loc[results.index.str.startswith(('district', 'location', 'ridge', 'knn')), 'rmsle'].min()
-    trees = results.loc[~results.index.str.startswith(('district', 'location', 'ridge', 'knn', 'voting', 'stacking')), 'rmsle']
+    trees = results.loc[~results.index.str.startswith(('district', 'location', 'ridge', 'knn', 'voting', 'stacking', 'ebm')), 'rmsle']
     st.write('')
     st.markdown(f'<div class="verdict">Every tree model beats the best simple baseline ({base:.3f} rmsle) by a clear margin, '
                 f'the best at {trees.min():.3f}. The ensembles then add almost nothing: the stack is '
                 f'{trees.min() - results.loc["stacking (trees + ridge + knn)", "rmsle"]:.3f} rmsle better than the best single model, '
-                'which is inside the noise between runs. A typical miss stays around 32% because the ads say little about the plot itself.</div>',
+                'which is inside the noise between runs. The explainable boosting model is behind the trees but still ahead of the baselines. A typical miss stays around 32% because the ads say little about the plot itself.</div>',
                 unsafe_allow_html=True)
     st.write('')
     st.caption('rmsle is the typical miss on the log price, lower is better. r2 is how much of the price spread the model explains. '
